@@ -1,0 +1,46 @@
+node_modules
+
+# Hardhat build output
+artifacts/
+cache/
+typechain-types/
+
+# Deployment addresses (localhost only — commit testnet/mainnet deployments explicitly)
+deployments/localhost.json
+
+# Test coverage
+coverage/
+.coverage_artifacts/
+.coverage_cache/
+
+# Backend
+backend/dist/
+backend/data/
+backend/.env
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.sw?
+
+# Claude Code
+.claude/
+CLAUDE.md

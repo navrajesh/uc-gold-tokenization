@@ -1,0 +1,25 @@
+{
+  "name": "uc-gold-tokenization",
+  "version": "1.0.0",
+  "description": "Gold Tokenization — ERC-3643/T-REX based gold token (POC)",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy/01-deploy-gold-token.ts --network localhost",
+    "deploy:sgt916": "hardhat run scripts/deploy/02-deploy-sgt916.ts --network localhost",
+    "clean": "hardhat clean",
+    "typechain": "hardhat typechain"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.10.0",
+    "hardhat": "^2.19.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1"
+  }
+}
