@@ -1,299 +1,233 @@
-import { useState, useEffect, FormEvent } from 'react';
-import { JsonRpcProvider, Contract } from 'ethers';
-import { Search, Coins, ArrowDownToLine, Clock } from 'lucide-react';
-import { api } from '../lib/api';
-import { formatGrams, formatUsd, formatDate, shortAddress } from '../lib/utils';
-import type { Token, Redemption, GoldPrice } from '../lib/types';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card, CardHeader, CardTitle, CardBody } from '../components/ui/Card';
-import { StatusBadge, Badge } from '../components/ui/Badge';
-import { Spinner } from '../components/ui/Spinner';
-import { EmptyState } from '../components/ui/EmptyState';
-import { HelpTooltip } from '../components/ui/Tooltip';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Download, ArrowLeftRight, ArrowRight, LogOut, Check, X } from 'lucide-react';
+import { useInvestorWallet } from '../hooks/useInvestorWallet';
+import { Eyebrow } from '../components/ui/Eyebrow';
+import { Sparkline } from '../components/ui/Sparkline';
+import { Badge, StatusBadge } from '../components/ui/Badge';
+import { Donut } from '../components/ui/Donut';
+import { Addr } from '../components/ui/Addr';
+import { formatGrams, formatUsd, formatWeiToGrams, shortAddress } from '../lib/utils';
 
-const RPC_URL = 'http://127.0.0.1:8545';
-const BALANCE_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)',
+const SPARK = [88, 89, 87, 90, 91, 90, 92, 93, 92, 94, 95, 93, 96, 94, 95, 96];
+
+const DEMO_WALLETS = [
+  { label: 'Maya Chen', addr: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' },
+  { label: 'Treasury Ops', addr: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' },
 ];
 
-async function getBalance(tokenAddress: string, wallet: string): Promise<{ grams: number; wei: string }> {
-  const provider = new JsonRpcProvider(RPC_URL);
-  const contract = new Contract(tokenAddress, BALANCE_ABI, provider);
-  const [balance, decimals]: [bigint, number] = await Promise.all([
-    contract.balanceOf(wallet),
-    contract.decimals(),
-  ]);
-  const grams = Number(balance) / 10 ** Number(decimals);
-  return { grams, wei: balance.toString() };
-}
-
 export default function InvestorPortal() {
-  const [wallet,      setWallet]      = useState('');
-  const [walletInput, setWalletInput] = useState('');
-  const [tokens,      setTokens]      = useState<Token[]>([]);
-  const [selectedToken, setSelectedToken] = useState<Token | null>(null);
-  const [balance,     setBalance]     = useState<{ grams: number; wei: string } | null>(null);
-  const [price,       setPrice]       = useState<GoldPrice | null>(null);
-  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
-  const [balanceLoading, setBalanceLoading] = useState(false);
-  const [balanceError,   setBalanceError]   = useState<string | null>(null);
+  const nav = useNavigate();
+  const { wallet, token, balance, price, identity, redemptions, reserveGrams, loading, error, setWallet, clearWallet } = useInvestorWallet();
+  const [input, setInput] = useState('');
 
-  // Redemption form
-  const [rdmForm, setRdmForm] = useState({ grams: '', deliveryAddress: '' });
-  const [rdmSaving, setRdmSaving] = useState(false);
-  const [rdmMsg,    setRdmMsg]    = useState<{ text: string; ok: boolean } | null>(null);
+  const priceNum = price ? parseFloat(price.pricePerGramUsd) : 0;
+  const usdValue = balance ? balance.grams * priceNum : 0;
+  const totalSupplyGrams = token?.totalSupply ? formatWeiToGrams(token.totalSupply, token.decimals ?? 18) : 0;
+  const multiplier = reserveGrams > 0 && totalSupplyGrams > 0 ? reserveGrams / totalSupplyGrams : 1;
+  const donutPct = Math.min(100, Math.round(multiplier * 100));
+  const sparkData = SPARK.map(v => v * (priceNum > 0 ? priceNum / 92.56 : 1));
 
-  useEffect(() => {
-    api.getTokens().then(t => { setTokens(t); setSelectedToken(t[0] ?? null); }).catch(() => {});
-    api.getPrice().then(setPrice).catch(() => {});
-  }, []);
-
-  const lookup = async () => {
-    const addr = walletInput.trim();
-    if (!addr || !selectedToken) return;
-    setWallet(addr);
-    setBalanceLoading(true);
-    setBalanceError(null);
-    setBalance(null);
-    setRedemptions([]);
-    try {
-      const [bal, rdms] = await Promise.all([
-        getBalance(selectedToken.address, addr),
-        api.getRedemptions(selectedToken.address, addr),
-      ]);
-      setBalance(bal);
-      setRedemptions(rdms);
-    } catch (e) {
-      setBalanceError((e as Error).message.includes('fetch') ? 'Could not connect to chain (is Hardhat running?)' : (e as Error).message);
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-
-  const submitRedemption = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!wallet || !selectedToken) return;
-    setRdmSaving(true); setRdmMsg(null);
-    try {
-      await api.createRedemption({
-        tokenAddress:    selectedToken.address,
-        investorAddress: wallet,
-        requestedGrams:  Number(rdmForm.grams),
-        deliveryAddress: rdmForm.deliveryAddress || undefined,
-      });
-      setRdmMsg({ text: `Redemption request submitted for ${rdmForm.grams}g. Status: PENDING.`, ok: true });
-      setRdmForm({ grams: '', deliveryAddress: '' });
-      api.getRedemptions(selectedToken.address, wallet).then(setRedemptions).catch(() => {});
-    } catch (err) {
-      setRdmMsg({ text: (err as Error).message, ok: false });
-    } finally { setRdmSaving(false); }
-  };
-
-  const priceNum  = price ? parseFloat(price.pricePerGramUsd) : 0;
-  const usdValue  = balance ? balance.grams * priceNum : 0;
+  if (!wallet) {
+    return (
+      <div className="main-pad">
+        <Eyebrow>Investor · SGT999</Eyebrow>
+        <h1 className="page-title">Your gold, on‑chain.</h1>
+        <p className="page-sub">Holdings read live from the blockchain at every refresh — no caching, no off‑chain ledger.</p>
+        <div className="card" style={{ marginTop: 32, padding: 24, maxWidth: 480 }}>
+          <h2 className="section-title" style={{ marginBottom: 14 }}>Connect wallet</h2>
+          <div className="field">
+            <label>Wallet address</label>
+            <input
+              className="input mono"
+              placeholder="0x…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && input.trim() && setWallet(input)}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Demo:</span>
+            {DEMO_WALLETS.map(w => (
+              <button key={w.addr} className="btn ghost sm" onClick={() => { setInput(w.addr); setWallet(w.addr); }}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn bullion"
+            style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}
+            disabled={!input.trim()}
+            onClick={() => setWallet(input)}
+          >
+            <Search size={13} /> Load holdings
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Investor Portal</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-          View holdings, request redemptions, track your gold
-        </p>
+    <div className="main-pad">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <Eyebrow>Welcome back</Eyebrow>
+          <h1 className="page-title">Your gold, on‑chain.</h1>
+          <p className="page-sub">Holdings read live from the blockchain at every refresh — no caching, no off‑chain ledger.</p>
+        </div>
+        <button className="btn ghost sm" style={{ marginTop: 8, flexShrink: 0 }} onClick={clearWallet}>
+          <LogOut size={12} /> {shortAddress(wallet)}
+        </button>
       </div>
 
-      {/* Wallet lookup */}
-      <Card>
-        <CardBody>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Input
-                label="Investor Wallet Address"
-                placeholder="0x..."
-                value={walletInput}
-                onChange={e => setWalletInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && lookup()}
-              />
-            </div>
-            {tokens.length > 1 && (
-              <div className="sm:w-44">
-                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1 block">Token</label>
-                <select
-                  value={selectedToken?.address ?? ''}
-                  onChange={e => setSelectedToken(tokens.find(t => t.address === e.target.value) ?? null)}
-                  className="w-full text-sm rounded-lg border border-stone-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  {tokens.map(t => <option key={t.address} value={t.address}>{t.symbol}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="flex items-end">
-              <Button onClick={lookup} loading={balanceLoading} className="h-9">
-                <Search size={14} /> Look up
-              </Button>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      {balanceError && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          {balanceError}
+      {error && (
+        <div style={{ marginTop: 16, padding: '10px 16px', background: 'var(--ruby-soft)', border: '1px solid color-mix(in oklch, var(--ruby) 40%, transparent)', borderRadius: 'var(--radius)', color: 'var(--ruby)', fontSize: 12 }}>
+          {error}
         </div>
       )}
 
-      {balanceLoading && (
-        <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 text-sm">
-          <Spinner size={4} /> Loading holdings from chain…
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 32, color: 'var(--ink-3)', fontSize: 13 }}>
+          <div className="loading-ring" />
+          Loading from chain…
         </div>
-      )}
-
-      {wallet && balance && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Holdings */}
-          <Card>
-            <CardBody>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2 inline-flex items-center">Gold Holdings <HelpTooltip text="Current token balance read live from the blockchain via JSON-RPC. Each token equals 1 gram of gold. Balance is not cached — each lookup queries the chain directly." /></p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                      {balance.grams.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-                    </span>
-                    <Badge variant="gold">{selectedToken?.symbol}</Badge>
-                  </div>
-                  <p className="text-lg font-semibold text-amber-500 mt-1">{formatUsd(usdValue)}</p>
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-                    {formatGrams(balance.grams)} · @{formatUsd(priceNum)}/g
-                  </p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 16, marginTop: 24 }}>
+            {/* Hero balance card */}
+            <div className="card card-pad" style={{ background: 'linear-gradient(180deg, var(--paper) 0%, var(--bullion-soft) 200%)' }}>
+              <Eyebrow>Holdings · {token?.symbol ?? 'SGT999'}</Eyebrow>
+              <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 10, gap: 12 }}>
+                <div className="serif tnum" style={{ fontSize: 64, lineHeight: 0.95, letterSpacing: '-0.025em' }}>
+                  {balance ? balance.grams.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                 </div>
-                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center">
-                  <Coins className="text-amber-600 dark:text-amber-400" size={22} />
-                </div>
+                <Badge tone="bullion">grams</Badge>
               </div>
-              <div className="mt-4 pt-4 border-t border-stone-100 dark:border-zinc-800 text-xs text-zinc-400 dark:text-zinc-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Wallet</span>
-                  <span className="font-mono">{shortAddress(wallet, 8)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Token</span>
-                  <span>{selectedToken?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Purity</span>
-                  <span>{selectedToken?.purityStandard ?? '—'} fine gold</span>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Redemption request form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Request Redemption <HelpTooltip text="Submit a request to convert tokens into physical gold. Flow: PENDING → Admin approves → Custodian calls fulfillRedemption on-chain, which burns the tokens and releases the gold for delivery." /></CardTitle>
-              <ArrowDownToLine size={16} className="text-zinc-400" />
-            </CardHeader>
-            <CardBody>
-              <form onSubmit={submitRedemption} className="space-y-3">
-                <Input
-                  label="Amount (grams) *"
-                  type="number"
-                  min="1"
-                  max={Math.floor(balance.grams)}
-                  placeholder="50"
-                  value={rdmForm.grams}
-                  onChange={e => setRdmForm(p => ({ ...p, grams: e.target.value }))}
-                  required
-                />
-                <Input
-                  label="Delivery Address"
-                  placeholder="123 Gold St, Singapore 049483"
-                  value={rdmForm.deliveryAddress}
-                  onChange={e => setRdmForm(p => ({ ...p, deliveryAddress: e.target.value }))}
-                />
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Submit request → Admin approves → Custodian delivers & burns tokens. Physical settlement only.
-                </p>
-                <Button type="submit" loading={rdmSaving} className="w-full" disabled={balance.grams < 1}>
-                  <ArrowDownToLine size={14} /> Submit Redemption Request
-                </Button>
-                {rdmMsg && (
-                  <div className={`rounded-lg border px-3 py-2 text-xs ${rdmMsg.ok
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300'
-                    : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-300'}`}>
-                    {rdmMsg.text}
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 12 }}>
+                <span className="serif tnum" style={{ fontSize: 22, color: 'var(--bullion-2)' }}>
+                  {balance ? formatUsd(usdValue) : '$0.00'}
+                </span>
+                {priceNum > 0 && (
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>@ {formatUsd(priceNum)}/g</span>
                 )}
-              </form>
-            </CardBody>
-          </Card>
-        </div>
-      )}
-
-      {/* Redemption history */}
-      {wallet && (
-        <Card>
-          <CardHeader>
-            <CardTitle>My Redemptions <HelpTooltip text="History of redemption requests submitted from this wallet. The burn transaction hash is recorded when the custodian fulfills the request on-chain." /></CardTitle>
-            <Badge variant="gray">{redemptions.length}</Badge>
-          </CardHeader>
-          {redemptions.length === 0 ? (
-            <EmptyState
-              icon={<Clock size={20} />}
-              title="No redemption history"
-              body="Your redemption requests will appear here once submitted."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-stone-100 dark:border-zinc-800">
-                    {[
-                      { label: 'Reference', help: 'Auto-generated unique reference ID for the redemption request (e.g. REDEEM-20240101-abc). Used to track the request through its lifecycle.' },
-                      { label: 'Amount',    help: 'Number of grams requested for redemption. Must be at least 1g (MinTransferAmount compliance rule).' },
-                      { label: 'Status',    help: 'PENDING = awaiting admin review. APPROVED = ready for custodian fulfillment. FULFILLED = tokens burned on-chain, gold released for delivery. REJECTED = request denied.' },
-                      { label: 'Requested', help: 'Date and time the redemption request was submitted.' },
-                      { label: 'Burn Tx',   help: 'On-chain transaction hash of the token burn. Only present when status is FULFILLED. Can be verified on a block explorer.' },
-                    ].map(({ label, help }) => (
-                      <th key={label} className="text-left px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wide">
-                        <span className="inline-flex items-center gap-0.5">{label}<HelpTooltip text={help} /></span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {redemptions.map(r => (
-                    <tr key={r.redemptionRef} className="border-b last:border-0 border-stone-50 dark:border-zinc-800/50 hover:bg-stone-50 dark:hover:bg-zinc-800/30">
-                      <td className="px-5 py-3 font-mono text-xs text-zinc-900 dark:text-zinc-100">{r.redemptionRef}</td>
-                      <td className="px-5 py-3">{formatGrams(r.requestedGrams)}</td>
-                      <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
-                      <td className="px-5 py-3 text-zinc-400 text-xs whitespace-nowrap">{formatDate(r.requestedAt)}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-zinc-400">
-                        {r.burnTxHash ? shortAddress(r.burnTxHash) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              </div>
+              {sparkData.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <Sparkline data={sparkData} w={400} h={48} />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="btn bullion" onClick={() => nav('/investor/mint')}>
+                  <Plus size={13} /> Mint more
+                </button>
+                <button className="btn ghost" onClick={() => nav('/investor/redeem')}>
+                  <Download size={13} /> Redeem
+                </button>
+                <button className="btn ghost" onClick={() => nav('/investor/activity')}>
+                  <ArrowLeftRight size={13} /> Activity
+                </button>
+              </div>
             </div>
-          )}
-        </Card>
-      )}
 
-      {/* Empty state before lookup */}
-      {!wallet && !balanceLoading && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center mb-4">
-            <Coins className="text-amber-500" size={28} />
+            {/* Identity card */}
+            <div className="card card-pad">
+              <Eyebrow>Identity</Eyebrow>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: identity?.isVerified ? 'var(--emerald-soft)' : 'var(--ruby-soft)',
+                  color: identity?.isVerified ? 'var(--emerald)' : 'var(--ruby)',
+                  display: 'grid', placeItems: 'center', flexShrink: 0,
+                }}>
+                  {identity?.isVerified ? <Check size={18} /> : <X size={18} />}
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {identity?.isVerified ? 'KYC Verified' : identity === null ? 'Not registered' : 'Not verified'}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
+                    {identity?.isVerified ? 'Identity registry · on-chain' : 'Contact admin to register'}
+                  </div>
+                </div>
+              </div>
+              <hr className="hairline" style={{ margin: '14px 0' }} />
+              <div style={{ fontSize: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                  <span style={{ color: 'var(--ink-3)' }}>Country</span>
+                  <span>{identity?.countryCode ?? '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <span style={{ color: 'var(--ink-3)' }}>Wallet</span>
+                  <Addr value={wallet} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <span style={{ color: 'var(--ink-3)' }}>Status</span>
+                  <Badge tone={identity?.isVerified ? 'ok' : 'danger'}>
+                    {identity?.isVerified ? 'Verified' : 'Unverified'}
+                  </Badge>
+                </div>
+              </div>
+              <button className="btn ghost sm" style={{ width: '100%', marginTop: 12, justifyContent: 'center' }} onClick={() => nav('/investor/identity')}>
+                View Identity <ArrowRight size={11} />
+              </button>
+            </div>
+
+            {/* Reserve coverage card */}
+            <div className="card card-pad">
+              <Eyebrow>Reserve coverage</Eyebrow>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 12 }}>
+                <Donut pct={donutPct} size={88} label="backed" />
+                <div>
+                  <div className="serif tnum" style={{ fontSize: 22 }}>{multiplier.toFixed(4)}×</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.6 }}>
+                    {reserveGrams.toLocaleString()} g vault<br />
+                    {totalSupplyGrams.toLocaleString('en-US', { maximumFractionDigits: 0 })} g supply
+                  </div>
+                </div>
+              </div>
+              <button className="btn ghost sm" style={{ width: '100%', marginTop: 12, justifyContent: 'center' }} onClick={() => nav('/')}>
+                View Proof of Reserve <ArrowRight size={11} />
+              </button>
+            </div>
           </div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">Enter a wallet address</p>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-xs">
-            Enter any KYC-verified investor wallet address to view their gold token holdings and redemption history.
-          </p>
-        </div>
+
+          {/* Recent activity */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <h2 className="section-title">Recent activity</h2>
+              <button className="btn ghost sm" onClick={() => nav('/investor/activity')}>
+                All activity <ArrowRight size={11} />
+              </button>
+            </div>
+            <div className="card">
+              {redemptions.length === 0 ? (
+                <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+                  No redemption history yet
+                </div>
+              ) : (
+                redemptions.slice(0, 5).map((r, i, a) => (
+                  <div key={r.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    padding: '14px 20px',
+                    borderBottom: i < Math.min(a.length, 5) - 1 ? '1px solid var(--rule)' : 0,
+                  }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--ink-3)', width: 100, flexShrink: 0 }}>
+                      {new Date(r.requestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <Badge tone="danger">Redeem</Badge>
+                    <span className="serif tnum" style={{ fontSize: 16, flex: 1, color: 'var(--ruby)' }}>
+                      −{formatGrams(r.requestedGrams)}
+                    </span>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+                      {r.redemptionRef}
+                    </span>
+                    <StatusBadge status={r.status} />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

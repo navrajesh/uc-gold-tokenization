@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bullion · Screen contact sheet</title>
+<style>
+  :root {
+    --paper: oklch(0.985 0.003 80);
+    --paper-2: oklch(0.965 0.005 80);
+    --rule: oklch(0.88 0.005 80);
+    --ink: oklch(0.20 0.012 60);
+    --ink-2: oklch(0.38 0.012 60);
+    --ink-3: oklch(0.56 0.010 60);
+    --bullion: oklch(0.74 0.115 78);
+    --bullion-2: oklch(0.66 0.130 70);
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper-2); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 60px 40px 80px; }
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 24px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; }
+  h1 { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; letter-spacing: -0.02em; line-height: 1; margin: 8px 0 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .eyebrow .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--bullion); margin-right: 6px; vertical-align: middle; }
+  .meta { font-size: 13px; color: var(--ink-3); max-width: 50ch; line-height: 1.5; }
+  .meta a { color: var(--ink); }
+  section { margin-top: 48px; }
+  h2 { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 30px; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--ink-3); margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  figure { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 12px 16px; display: flex; gap: 12px; align-items: baseline; border-top: 1px solid var(--rule); font-size: 13px; }
+  figcaption .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--ink-3); }
+  figcaption .ttl { font-weight: 500; color: var(--ink); }
+  figcaption .role { margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+  .mobile-fig img { background: var(--paper-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow"><span class="dot"></span>Bullion · Gold Tokenizer redesign</div>
+      <h1>Every screen, every role.</h1>
+    </div>
+    <p class="meta">22 frames across 5 personas. Open <a href="../designs/Bullion Gold Tokenizer.html">the live prototype</a> for interactive states and pixel detail.</p>
+  </header>
+
+  <section>
+    <h2>Public</h2>
+    <p class="sub">No wallet needed. The trust surface for every prospect, regulator, and journalist.</p>
+    <div class="grid">
+      <figure><img src="00a-public-proof-of-reserve-hero.png" alt="" /><figcaption><span class="num">00a</span><span class="ttl">Proof of Reserve · hero</span><span class="role">Public</span></figcaption></figure>
+      <figure><img src="00b-public-proof-of-reserve-vaults.png" alt="" /><figcaption><span class="num">00b</span><span class="ttl">Vault distribution + bar registry</span><span class="role">Public</span></figcaption></figure>
+      <figure><img src="00c-public-proof-of-reserve-events.png" alt="" /><figcaption><span class="num">00c</span><span class="ttl">On-chain event stream + footer</span><span class="role">Public</span></figcaption></figure>
+      <figure><img src="01-public-proof-of-reserve-ink.png" alt="" /><figcaption><span class="num">01</span><span class="ttl">Proof of Reserve · ink theme</span><span class="role">Public</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Investor</h2>
+    <p class="sub">Maya Chen, Singapore retail. Verify → Mint → Redeem → Track.</p>
+    <div class="grid">
+      <figure><img src="02-investor-holdings.png" alt="" /><figcaption><span class="num">02</span><span class="ttl">Holdings dashboard</span><span class="role">Investor</span></figcaption></figure>
+      <figure><img src="03-investor-mint.png" alt="" /><figcaption><span class="num">03</span><span class="ttl">Mint · subscribe</span><span class="role">Investor</span></figcaption></figure>
+      <figure><img src="04-investor-redeem.png" alt="" /><figcaption><span class="num">04</span><span class="ttl">Redeem · multi-step</span><span class="role">Investor</span></figcaption></figure>
+      <figure><img src="05-investor-activity.png" alt="" /><figcaption><span class="num">05</span><span class="ttl">Activity ledger</span><span class="role">Investor</span></figcaption></figure>
+      <figure><img src="06-investor-identity.png" alt="" /><figcaption><span class="num">06</span><span class="ttl">Identity · ONCHAINID</span><span class="role">Investor</span></figcaption></figure>
+      <figure class="mobile-fig"><img src="07-investor-mobile.png" alt="" /><figcaption><span class="num">07</span><span class="ttl">Mobile holdings (iOS)</span><span class="role">Investor</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Issuer Admin</h2>
+    <p class="sub">Treasury Ops at the issuing entity. Mint console with on-chain pre-flight, redemption kanban, KYC queue, oracle.</p>
+    <div class="grid">
+      <figure><img src="08-admin-overview.png" alt="" /><figcaption><span class="num">08</span><span class="ttl">Operations overview</span><span class="role">Admin</span></figcaption></figure>
+      <figure><img src="09-admin-redemption-kanban.png" alt="" /><figcaption><span class="num">09</span><span class="ttl">Redemption queue · kanban</span><span class="role">Admin</span></figcaption></figure>
+      <figure><img src="10-admin-mint-console.png" alt="" /><figcaption><span class="num">10</span><span class="ttl">Mint console</span><span class="role">Admin</span></figcaption></figure>
+      <figure><img src="11-admin-kyc-queue.png" alt="" /><figcaption><span class="num">11</span><span class="ttl">KYC queue</span><span class="role">Admin</span></figcaption></figure>
+      <figure><img src="12-admin-price-oracle.png" alt="" /><figcaption><span class="num">12</span><span class="ttl">Price oracle</span><span class="role">Admin</span></figcaption></figure>
+      <figure><img src="13-admin-token-registry.png" alt="" /><figcaption><span class="num">13</span><span class="ttl">Token registry</span><span class="role">Admin</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Custodian</h2>
+    <p class="sub">Brinks Singapore vault operator. Inventory, bar intake, redemption fulfillment, attestations.</p>
+    <div class="grid">
+      <figure><img src="14-custodian-vault-inventory.png" alt="" /><figcaption><span class="num">14</span><span class="ttl">Vault inventory</span><span class="role">Custodian</span></figcaption></figure>
+      <figure><img src="15-custodian-bar-intake.png" alt="" /><figcaption><span class="num">15</span><span class="ttl">Bar intake · register on-chain</span><span class="role">Custodian</span></figcaption></figure>
+      <figure><img src="16-custodian-fulfillment.png" alt="" /><figcaption><span class="num">16</span><span class="ttl">Fulfillment queue</span><span class="role">Custodian</span></figcaption></figure>
+      <figure><img src="17-custodian-attestation.png" alt="" /><figcaption><span class="num">17</span><span class="ttl">Attestation builder</span><span class="role">Custodian</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Auditor</h2>
+    <p class="sub">Independent attestor reconstructing reserve invariants from chain state.</p>
+    <div class="grid">
+      <figure><img src="18-auditor-reserve-invariants.png" alt="" /><figcaption><span class="num">18</span><span class="ttl">Reserve invariants</span><span class="role">Auditor</span></figcaption></figure>
+      <figure><img src="19-auditor-reserve-ink.png" alt="" /><figcaption><span class="num">19</span><span class="ttl">Reserve · ink theme</span><span class="role">Auditor</span></figcaption></figure>
+    </div>
+  </section>
+</div>
+</body>
+</html>

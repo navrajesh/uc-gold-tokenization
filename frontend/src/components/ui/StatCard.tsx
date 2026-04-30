@@ -1,47 +1,44 @@
 import type { ReactNode } from 'react';
 import { HelpTooltip } from './Tooltip';
+import { Sparkline } from './Sparkline';
 
 interface Props {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  icon: ReactNode;
+  icon?: ReactNode;
   accent?: boolean;
   help?: string;
+  sparkData?: number[];
+  deltaPct?: number;
 }
 
-export function StatCard({ label, value, sub, icon, accent, help }: Props) {
+export function StatCard({ label, value, sub, icon, accent, help, sparkData, deltaPct }: Props) {
   return (
-    <div className={`
-      relative overflow-hidden rounded-xl border p-5
-      bg-white dark:bg-zinc-900
-      border-stone-200 dark:border-zinc-800
-      shadow-sm hover:shadow-md transition-shadow
-      ${accent ? 'border-t-2 border-t-amber-500 dark:border-t-amber-400' : ''}
-    `}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1 flex items-center">
-            {label}
-            {help && <HelpTooltip text={help} />}
-          </p>
-          <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 truncate">
-            {value}
-          </div>
-          {sub && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{sub}</p>
-          )}
-        </div>
-        <div className={`
-          flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-          ${accent
-            ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
-            : 'bg-stone-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-          }
-        `}>
-          {icon}
-        </div>
+    <div
+      className="card kpi"
+      style={accent ? { borderTop: '2px solid var(--bullion-2)' } : undefined}
+    >
+      <div className="label">
+        {icon && (
+          <span style={{ color: accent ? 'var(--bullion)' : 'var(--ink-4)', display: 'flex', flexShrink: 0 }}>
+            {icon}
+          </span>
+        )}
+        {label}
+        {help && <HelpTooltip text={help} />}
       </div>
+      <div className="num tnum">{value}</div>
+      {sub && <div className="sub">{sub}</div>}
+      {typeof deltaPct === 'number' && (
+        <div className="sub">
+          <span className={deltaPct >= 0 ? 'delta-up' : 'delta-dn'}>
+            {deltaPct >= 0 ? '+' : ''}{deltaPct.toFixed(2)}%
+          </span>
+          <span style={{ color: 'var(--ink-3)' }}>24h</span>
+        </div>
+      )}
+      {sparkData && <Sparkline data={sparkData} />}
     </div>
   );
 }

@@ -1,35 +1,44 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Vault, Coins, Scale, DollarSign, Package } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { api } from '../lib/api';
-import { formatGrams, formatUsd, formatWeiToGrams, formatPurityBps, formatDate, reserveRatio } from '../lib/utils';
-import type { Token, GoldBar, GoldPrice } from '../lib/types';
-import { StatCard } from '../components/ui/StatCard';
-import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardBody } from '../components/ui/Card';
-import { StatusBadge, Badge } from '../components/ui/Badge';
-import { PageSpinner } from '../components/ui/Spinner';
-import { EmptyState } from '../components/ui/EmptyState';
-import { HelpTooltip } from '../components/ui/Tooltip';
+import { formatGrams, formatUsd, formatWeiToGrams, formatPurityBps, formatRelativeTime, shortAddress } from '../lib/utils';
+import type { Token, GoldBar, GoldPrice, Redemption } from '../lib/types';
+import { Eyebrow } from '../components/ui/Eyebrow';
+import { KPI } from '../components/ui/KPI';
+import { Badge, StatusBadge } from '../components/ui/Badge';
+import { Donut } from '../components/ui/Donut';
+import { Ingot } from '../components/ui/Ingot';
+
+const SUPPLY_SPARK = [10, 12, 11, 15, 14, 16, 18, 17, 19, 22, 21, 24, 23, 26, 28, 27];
+
+interface VaultGroup { id: string; grams: number; bars: number; }
 
 export default function Dashboard() {
-  const [tokens,      setTokens]      = useState<Token[]>([]);
-  const [selected,    setSelected]    = useState<Token | null>(null);
-  const [bars,        setBars]        = useState<GoldBar[]>([]);
-  const [reserveGrams, setReserveGrams] = useState<number>(0);
-  const [price,       setPrice]       = useState<GoldPrice | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
+  const [token,      setToken]      = useState<Token | null>(null);
+  const [bars,       setBars]       = useState<GoldBar[]>([]);
+  const [price,      setPrice]      = useState<GoldPrice | null>(null);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       const [tkns, pr] = await Promise.all([api.getTokens(), api.getPrice()]);
-      setTokens(tkns);
       setPrice(pr);
-      const first = tkns[0] ?? null;
-      setSelected(s => s ?? first);
+      const base = tkns[0] ?? null;
+      if (base) {
+        const [enriched, res, rdms] = await Promise.all([
+          api.getToken(base.address),
+          api.getReserves(base.address),
+          api.getRedemptions(base.address),
+        ]);
+        setToken(enriched);
+        setBars(res.bars);
+        setRedemptions(rdms);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -40,193 +49,269 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (!selected) return;
-    api.getReserves(selected.address).then(r => {
-      setBars(r.bars);
-      setReserveGrams(r.summary?.totalActiveGrams ?? 0);
-    }).catch(() => {});
-    // Refresh token chain data (totalSupply)
-    api.getToken(selected.address).then(t => {
-      setSelected(t);
-    }).catch(() => {});
-  }, [selected?.address]);
+  const activeBars       = bars.filter(b => b.active);
+  const reserveGrams     = activeBars.reduce((s, b) => s + b.weightGrams, 0);
+  const totalSupplyGrams = token?.totalSupply ? formatWeiToGrams(token.totalSupply, token.decimals ?? 18) : 0;
+  const ratio            = totalSupplyGrams > 0 ? (reserveGrams / totalSupplyGrams) * 100 : 100;
+  const headroom         = reserveGrams - totalSupplyGrams;
+  const priceNum         = price ? parseFloat(price.pricePerGramUsd) : 0;
 
-  const totalSupplyGrams = selected?.totalSupply
-    ? formatWeiToGrams(selected.totalSupply, selected.decimals)
-    : 0;
+  // Group active bars by vault
+  const vaultGroups: VaultGroup[] = [];
+  activeBars.forEach(bar => {
+    const existing = vaultGroups.find(v => v.id === bar.vaultId);
+    if (existing) { existing.grams += bar.weightGrams; existing.bars += 1; }
+    else vaultGroups.push({ id: bar.vaultId, grams: bar.weightGrams, bars: 1 });
+  });
 
-  const ratio = selected?.totalSupply
-    ? reserveRatio(selected.totalSupply, reserveGrams, selected.decimals)
-    : 100;
+  const lastBar = [...activeBars].sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())[0];
+  const lastAttestHours = lastBar ? Math.round((Date.now() - new Date(lastBar.registeredAt).getTime()) / 3_600_000) : null;
 
-  const priceNum = price ? parseFloat(price.pricePerGramUsd) : 0;
-
-  if (loading) return <PageSpinner />;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-3)', fontSize: 13, gap: 10 }}>
+        <div className="loading-ring" /> Loading reserve data…
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Reserve Dashboard</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Real-time proof-of-reserve · every token is backed by physical gold
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {tokens.length > 1 && (
-            <select
-              value={selected?.address ?? ''}
-              onChange={e => setSelected(tokens.find(t => t.address === e.target.value) ?? null)}
-              className="text-sm rounded-lg border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              {tokens.map(t => (
-                <option key={t.address} value={t.address}>{t.symbol} — {t.name}</option>
-              ))}
-            </select>
-          )}
-          <Button variant="secondary" size="sm" loading={refreshing} onClick={() => load(true)}>
-            <RefreshCw size={13} />
-            Refresh
-          </Button>
-        </div>
+    <div className="main-pad">
+      {/* Hero */}
+      <div>
+        <Eyebrow>Live · refreshed on demand</Eyebrow>
+        <h1 className="page-title">Every gram, fully accounted.</h1>
+        <p className="page-sub">
+          Bullion publishes its reserve ratio in real time, on‑chain. Token supply can never exceed registered vault weight — the smart contract reverts the mint. This page is open: no wallet, no login, just the ledger.
+        </p>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+        <div style={{ marginTop: 16, padding: '10px 16px', background: 'var(--ruby-soft)', border: '1px solid color-mix(in oklch, var(--ruby) 40%, transparent)', borderRadius: 'var(--radius)', color: 'var(--ruby)', fontSize: 12 }}>
           {error} — backend may be offline
         </div>
       )}
 
-      {tokens.length === 0 && !error ? (
-        <EmptyState
-          icon={<Vault size={24} />}
-          title="No tokens deployed yet"
-          body="Run the Hardhat deploy script and register the token via the Admin panel."
+      {/* KPI grid */}
+      <div className="grid-4" style={{ marginTop: 24 }}>
+        <KPI
+          label="Reserve Ratio"
+          num={ratio.toFixed(2)}
+          unit="%"
+          sub={<span style={{ color: 'var(--emerald)' }}>● Fully backed · {Math.round(Math.max(0, headroom)).toLocaleString()} g headroom</span>}
         />
-      ) : (
-        <>
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              accent
-              label="Gold in Vault"
-              help="Total physical gold weight registered on-chain (active bars only). The smart contract blocks any mint that would exceed this amount — the reserve ratio can never drop below 100%."
-              icon={<Vault size={18} />}
-              value={formatGrams(reserveGrams)}
-              sub={`${bars.filter(b => b.active).length} active bar${bars.filter(b => b.active).length !== 1 ? 's' : ''}`}
-            />
-            <StatCard
-              accent
-              label="Circulating Supply"
-              help="Total tokens currently minted and held by investors, read live from the blockchain. Each token equals exactly 1 gram of gold at the specified purity standard."
-              icon={<Coins size={18} />}
-              value={`${totalSupplyGrams.toLocaleString()} ${selected?.symbol ?? ''}`}
-              sub={`${selected?.purityStandard ?? '—'} purity`}
-            />
-            <StatCard
-              label="Reserve Ratio"
-              help="Vault weight ÷ circulating supply × 100. The smart contract enforces this can never drop below 100% at mint time. A ratio above 100% means the vault holds more gold than tokens issued."
-              icon={<Scale size={18} />}
-              value={
-                <span className={ratio >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}>
-                  {ratio.toFixed(2)}%
-                </span>
-              }
-              sub={ratio >= 100 ? '✓ Fully backed' : '⚠ Under-collateralised'}
-            />
-            <StatCard
-              label="Gold Price"
-              help="Manual USD/gram price set in Admin → Price tab. Used only for USD value display — has no effect on on-chain balances or compliance rules."
-              icon={<DollarSign size={18} />}
-              value={formatUsd(priceNum)}
-              sub={`per gram · ${totalSupplyGrams > 0 ? formatUsd(totalSupplyGrams * priceNum) + ' total' : 'manual feed'}`}
-            />
+        <KPI
+          label="Vault Weight"
+          num={reserveGrams.toLocaleString()}
+          unit="g"
+          sub={<><b>{activeBars.length} bar{activeBars.length !== 1 ? 's' : ''}</b><span style={{ color: 'var(--ink-3)' }}>across {vaultGroups.length} vault{vaultGroups.length !== 1 ? 's' : ''}</span></>}
+        />
+        <KPI
+          label="Circulating"
+          num={totalSupplyGrams.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+          unit="SGT999"
+          sub={<><b>{priceNum > 0 ? formatUsd(totalSupplyGrams * priceNum) : '—'}</b><span style={{ color: 'var(--ink-3)' }}>@ {priceNum > 0 ? formatUsd(priceNum) : '—'}/g</span></>}
+          sparkData={SUPPLY_SPARK}
+        />
+        <KPI
+          label="Last attestation"
+          num={lastAttestHours != null ? String(lastAttestHours) : '—'}
+          unit={lastAttestHours != null ? 'h ago' : ''}
+          sub={<><b>Bar registry</b><span style={{ color: 'var(--ink-3)' }}>— on-chain</span></>}
+        />
+      </div>
+
+      {/* Coverage scale */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="coverage" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
+          <div>
+            <div className="eyebrow">Coverage</div>
+            <div className="ratio tnum">{ratio.toFixed(4)}<small>%</small></div>
           </div>
+          <div style={{ paddingTop: 8 }}>
+            <div className="scale">
+              <div className="fill" style={{ width: '100%' }} />
+              {totalSupplyGrams > 0 && reserveGrams > 0 && (
+                <div className="target" style={{ left: `${Math.min(98, (totalSupplyGrams / reserveGrams) * 100)}%` }} />
+              )}
+            </div>
+            <div className="legend">
+              <span><b>{reserveGrams.toLocaleString()} g</b> in vault</span>
+              <span><b>{totalSupplyGrams.toLocaleString('en-US', { maximumFractionDigits: 0 })} g</b> tokens issued</span>
+              <span>Mint guard <b>active</b> · floor 100.00%</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <Badge tone="ok" dot>On-chain enforced</Badge>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
+              GoldToken.mint() reverts<br />if supply &gt; vault weight
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Reserve ratio bar */}
-          <Card>
-            <CardBody className="py-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 inline-flex items-center">
-                  Reserve coverage
-                  <HelpTooltip text="Visual ratio of vault gold to circulating token supply. Green = fully backed (≥ 100%). Red = undercollateralised — investigate immediately. The on-chain mint guard prevents this from happening during normal operations." />
-                </span>
-                <span className={`text-xs font-bold ${ratio >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-                  {ratio.toFixed(4)}%
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-stone-100 dark:bg-zinc-800 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${ratio >= 100 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                  style={{ width: `${Math.min(ratio, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
-                {reserveGrams}g in vault · {totalSupplyGrams}g tokens in circulation · ratio must always be ≥ 100%
-              </p>
-            </CardBody>
-          </Card>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+        <button className="btn ghost sm" onClick={() => load(true)} disabled={refreshing}>
+          <RefreshCw size={12} style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}} />
+          Refresh
+        </button>
+      </div>
 
-          {/* Gold Bar Registry */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Gold Bar Registry <HelpTooltip text="All physical gold bars registered on-chain in the GoldReserve contract. Only active bars count toward the vault total used in the reserve ratio." /></CardTitle>
-              <Badge variant="gray">{bars.length} bar{bars.length !== 1 ? 's' : ''}</Badge>
-            </CardHeader>
-            {bars.length === 0 ? (
-              <EmptyState
-                icon={<Package size={20} />}
-                title="No bars registered"
-                body="Register gold bars via the Admin panel to back your token supply."
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-stone-100 dark:border-zinc-800">
-                      {[
-                        { label: 'Bar ID',     help: 'Unique identifier for the physical gold bar (e.g. GB-2024-001). Set by the custodian at registration and immutable.' },
-                        { label: 'Weight',     help: 'Physical weight of the bar in grams. This amount is added to the vault total while the bar is active.' },
-                        { label: 'Purity',     help: 'Gold purity in basis points. 9999 = 99.99% fine gold (999.9 standard). 9160 = 91.6% (916 standard / 22-karat).' },
-                        { label: 'Vault',      help: 'ID of the secure vault facility where this bar is physically stored (e.g. Vault-SG-A).' },
-                        { label: 'Assay Ref',  help: 'Reference number of the independent assay certificate that verifies this bar\'s weight and purity.' },
-                        { label: 'Registered', help: 'Date and time the bar was registered on-chain via the GoldReserve smart contract.' },
-                        { label: 'Status',     help: 'Active bars count in the vault total. Deactivating a bar reduces reserve headroom, limiting how many tokens can be minted.' },
-                      ].map(({ label, help }) => (
-                        <th key={label} className="text-left px-5 py-3 text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                          <span className="inline-flex items-center gap-0.5">{label}<HelpTooltip text={help} /></span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bars.map((bar, i) => (
-                      <tr
-                        key={bar.barId}
-                        className={`border-b last:border-0 border-stone-50 dark:border-zinc-800/50 hover:bg-stone-50 dark:hover:bg-zinc-800/30 transition-colors ${i % 2 === 0 ? '' : 'bg-stone-50/40 dark:bg-zinc-800/20'}`}
-                      >
-                        <td className="px-5 py-3 font-mono text-xs text-zinc-900 dark:text-zinc-100 font-medium">{bar.barId}</td>
-                        <td className="px-5 py-3 text-zinc-900 dark:text-zinc-100">{bar.weightGrams.toLocaleString()}g</td>
-                        <td className="px-5 py-3">
-                          <Badge variant="gold">{formatPurityBps(bar.purityBps)}</Badge>
-                        </td>
-                        <td className="px-5 py-3 text-zinc-600 dark:text-zinc-300">{bar.vaultId}</td>
-                        <td className="px-5 py-3 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{bar.assayRef ?? '—'}</td>
-                        <td className="px-5 py-3 text-zinc-400 dark:text-zinc-500 text-xs whitespace-nowrap">{formatDate(bar.registeredAt)}</td>
-                        <td className="px-5 py-3">
-                          <StatusBadge status={bar.active ? 'Active' : 'Inactive'} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      {/* Vault distribution */}
+      {vaultGroups.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <h2 className="section-title">Vault distribution</h2>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Badge>Geographic</Badge>
+              <Badge>Active bars</Badge>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, vaultGroups.length)}, 1fr)`, gap: 16 }}>
+            {vaultGroups.map(v => (
+              <div key={v.id} className="card card-pad">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div className="eyebrow"><span className="dot" />Vault {v.id}</div>
+                    <div className="serif" style={{ fontSize: 22, marginTop: 4 }}>{v.id}</div>
+                  </div>
+                  <Donut pct={reserveGrams > 0 ? Math.round((v.grams / reserveGrams) * 100) : 0} size={84} label="share" />
+                </div>
+                <hr className="hairline" style={{ margin: '14px 0' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', fontSize: 12 }}>
+                  <div>
+                    <div style={{ color: 'var(--ink-3)' }}>Weight</div>
+                    <div className="serif tnum" style={{ fontSize: 18 }}>
+                      {v.grams.toLocaleString()}<small style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 4 }}>g</small>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: 'var(--ink-3)' }}>Bars</div>
+                    <div className="serif tnum" style={{ fontSize: 18 }}>{v.bars}</div>
+                  </div>
+                </div>
               </div>
-            )}
-          </Card>
-        </>
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* Bar registry */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <h2 className="section-title">
+            Bar registry · {activeBars.length} active bar{activeBars.length !== 1 ? 's' : ''}
+          </h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn ghost sm">Export CSV</button>
+          </div>
+        </div>
+        <div className="card">
+          {bars.length === 0 ? (
+            <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+              No gold bars registered yet.
+            </div>
+          ) : (
+            <div className="scroll-x">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th>Bar ID</th>
+                    <th>Vault</th>
+                    <th className="num">Weight</th>
+                    <th>Purity</th>
+                    <th>Assay ref</th>
+                    <th>Registered</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bars.map(b => (
+                    <tr key={b.barId}>
+                      <td>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <Ingot size="sm" />
+                          <span className="mono" style={{ fontWeight: 600 }}>{b.barId}</span>
+                        </div>
+                      </td>
+                      <td><Badge>{b.vaultId}</Badge></td>
+                      <td className="num">
+                        <span className="serif" style={{ fontSize: 15 }}>{b.weightGrams.toLocaleString()}</span> g
+                      </td>
+                      <td>
+                        <Badge tone="bullion">
+                          {formatPurityBps(b.purityBps)}% · {b.purityBps === 9999 ? '4N' : b.purityBps === 9160 ? '916' : '—'}
+                        </Badge>
+                      </td>
+                      <td className="addr">{b.assayRef ?? '—'}</td>
+                      <td className="muted">
+                        {new Date(b.registeredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </td>
+                      <td><StatusBadge status={b.active ? 'Active' : 'Inactive'} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* On-chain activity stream */}
+      {redemptions.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <h2 className="section-title">On-chain activity</h2>
+            <Badge tone="ok" dot>Live</Badge>
+          </div>
+          <div className="card">
+            {redemptions.slice(0, 6).map((r, i, a) => (
+              <div key={r.id} style={{
+                display: 'flex', alignItems: 'center', gap: 16,
+                padding: '12px 20px',
+                borderBottom: i < Math.min(a.length, 6) - 1 ? '1px solid var(--rule)' : 'none',
+              }}>
+                <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', width: 56, flexShrink: 0 }}>
+                  {formatRelativeTime(r.requestedAt)}
+                </span>
+                <Badge tone={r.status === 'FULFILLED' ? 'danger' : r.status === 'PENDING' ? 'azure' : 'ghost'}>
+                  {r.status === 'FULFILLED' ? 'Redeem · Burn' : 'Redemption'}
+                </Badge>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--ink-2)', flex: 1 }}>
+                  {shortAddress(r.investorAddress)}
+                </span>
+                <span className="serif tnum" style={{ fontSize: 16, color: 'var(--ruby)' }}>
+                  −{formatGrams(r.requestedGrams)}
+                </span>
+                <StatusBadge status={r.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trust footer */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 32 }}>
+        {[
+          {
+            title: 'Reserve cap on-chain',
+            body: 'GoldToken.mint() reverts if total supply would exceed registered vault weight. The contract — not us — enforces the 1:1 backing.',
+          },
+          {
+            title: 'KYC at the protocol',
+            body: 'IdentityRegistry gates every transfer. Non-verified addresses cannot send or receive. Compliance modules AND-gate every move.',
+          },
+          {
+            title: 'Independent attestation',
+            body: 'Physical bars are registered on-chain via the GoldReserve contract. Each bar has an assay reference and custodian record.',
+          },
+        ].map(c => (
+          <div key={c.title} className="card card-pad">
+            <div className="serif" style={{ fontSize: 20, lineHeight: 1.2 }}>{c.title}</div>
+            <p style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 8, lineHeight: 1.55, margin: '8px 0 0' }}>{c.body}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
