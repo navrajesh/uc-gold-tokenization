@@ -30,6 +30,9 @@ const config: HardhatUserConfig = {
     outDir: "typechain-types",
     target: "ethers-v6",
   },
+  mocha: {
+    spec: "test/**/*.test.ts",
+  },
 };
 
 export default config;

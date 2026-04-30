@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { shortAddress } from '../../lib/utils';
 import {
   Home, Plus, Download, Clock, ShieldCheck,
   Activity, Hammer, Users, TrendingUp, Coins,
@@ -13,12 +14,17 @@ interface NavItem { id: string; label: string; icon: LucideIcon; badge?: string;
 interface Role    { id: RoleId; tag: string; name: string; addr: string; }
 
 const ROLES: Role[] = [
-  { id: 'investor',  tag: 'Investor',           name: 'Maya Chen',         addr: '0x3C44…4293BC' },
+  { id: 'investor',  tag: 'Investor',           name: 'Investor',          addr: 'no wallet connected' },
   { id: 'admin',     tag: 'Issuer · Admin',      name: 'Treasury Ops',      addr: '0xf39F…92266'  },
   { id: 'custodian', tag: 'Custodian',           name: 'Brinks SG · Vault', addr: '0x7099…79C8'   },
   { id: 'auditor',   tag: 'Auditor · Read',      name: 'Marcum LLP',        addr: '0x90F7…3906'   },
   { id: 'public',    tag: 'Public · No wallet',  name: 'Proof of Reserve',  addr: '— anyone can view —' },
 ];
+
+const KNOWN_WALLETS: Record<string, string> = {
+  '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': 'Maya Chen',
+  '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266': 'Treasury Ops',
+};
 
 const NAV: Record<RoleId, NavItem[]> = {
   investor: [
@@ -73,10 +79,21 @@ export default function Sidebar() {
   const r = ROLES.find(x => x.id === role)!;
   const nav = NAV[role];
   const [open, setOpen] = useState(false);
+  const [investorWallet, setInvestorWallet] = useState<string | null>(null);
+
+  useEffect(() => {
+    setInvestorWallet(localStorage.getItem('gold-wallet'));
+  }, [pathname]);
 
   function switchRole(newRole: RoleId) {
     navigate(NAV[newRole][0].path);
     setOpen(false);
+  }
+
+  function switchInvestorWallet() {
+    localStorage.removeItem('gold-wallet');
+    setInvestorWallet(null);
+    navigate('/investor');
   }
 
   return (
@@ -96,7 +113,11 @@ export default function Sidebar() {
         <button className="role-card" onClick={() => setOpen(o => !o)}>
           <div className="role-tag">{r.tag}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="role-name">{r.name}</div>
+            <div className="role-name">
+              {role === 'investor' && investorWallet
+                ? (KNOWN_WALLETS[investorWallet] ?? 'Investor')
+                : r.name}
+            </div>
             <ChevronDown
               size={12}
               style={{
@@ -107,7 +128,11 @@ export default function Sidebar() {
               }}
             />
           </div>
-          <div className="role-addr">{r.addr}</div>
+          <div className="role-addr">
+            {role === 'investor'
+              ? (investorWallet ? shortAddress(investorWallet, 8) : 'no wallet connected')
+              : r.addr}
+          </div>
         </button>
 
         {open && (
@@ -130,6 +155,38 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      {/* Investor wallet switcher */}
+      {role === 'investor' && (
+        <div>
+          <div className="nav-section">Wallet</div>
+          <div className="card" style={{ padding: '10px 12px', fontSize: 11 }}>
+            {investorWallet ? (
+              <>
+                <div style={{ color: 'var(--ink-3)', marginBottom: 6 }}>Connected as</div>
+                <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-2)', wordBreak: 'break-all', marginBottom: 8 }}>
+                  {shortAddress(investorWallet, 8)}
+                </div>
+                <button
+                  className="btn ghost sm"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={switchInvestorWallet}
+                >
+                  Switch wallet
+                </button>
+              </>
+            ) : (
+              <button
+                className="btn ghost sm"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => navigate('/investor')}
+              >
+                Connect wallet
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Nav */}
       <div>

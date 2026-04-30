@@ -134,6 +134,37 @@ contract GoldToken is Token {
         _compliance.created(to, amount);
     }
 
+    // ─── Override batchMint — enforce reserve cap on total ───────────────────
+
+    /// @notice Batch-mints gold tokens, checking the reserve cap against the combined total.
+    /// @dev    Overrides Token.batchMint() to perform a single up-front reserve cap check
+    ///         on the sum of all amounts before any _mint calls, preventing a batch from
+    ///         being partially applied when the aggregate would exceed the vault reserve.
+    /// @param  toList  Array of recipient addresses.
+    /// @param  amounts Array of token amounts (in wei) corresponding to each address.
+    function batchMint(
+        address[] calldata toList,
+        uint256[] calldata amounts
+    ) external override onlyRole(SUPPLY_MODIFIER) {
+        require(toList.length == amounts.length, "Token: length mismatch");
+        if (address(goldReserveContract) != address(0)) {
+            uint256 batchTotal = 0;
+            for (uint256 i = 0; i < amounts.length; i++) {
+                batchTotal += amounts[i];
+            }
+            uint256 reserveGrams = goldReserveContract.getTotalActiveWeightGrams();
+            uint256 reserveCap   = reserveGrams * (10 ** decimals());
+            require(
+                totalSupply() + batchTotal <= reserveCap,
+                "GoldToken: mint would exceed vault reserve"
+            );
+        }
+        for (uint256 i = 0; i < toList.length; i++) {
+            _mint(toList[i], amounts[i]);
+            _compliance.created(toList[i], amounts[i]);
+        }
+    }
+
     // ─── Redemption ──────────────────────────────────────────────────────────
 
     /// @notice Investor signals intent to redeem their tokens for physical gold.

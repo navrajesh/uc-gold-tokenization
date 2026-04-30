@@ -76,7 +76,7 @@ export default function InvestorPortal() {
           <p className="page-sub">Holdings read live from the blockchain at every refresh — no caching, no off‑chain ledger.</p>
         </div>
         <button className="btn ghost sm" style={{ marginTop: 8, flexShrink: 0 }} onClick={clearWallet}>
-          <LogOut size={12} /> {shortAddress(wallet)}
+          <LogOut size={12} /> Switch wallet
         </button>
       </div>
 

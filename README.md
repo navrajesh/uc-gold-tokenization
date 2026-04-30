@@ -123,7 +123,11 @@ uc-gold-tokenization/
 │       └── 01-deploy-gold-token.ts # Full SGT999 stack + seed data
 │
 ├── test/
-│   └── GoldToken.test.ts           # 11 unit tests (Hardhat + ethers v6)
+│   ├── fixtures.ts                 # Shared deploy fixture (loadFixture)
+│   ├── GoldToken.reserve.test.ts   # Reserve cap, bar deactivation, batchMint
+│   ├── GoldToken.transfer.test.ts  # KYC, freeze, transferFrom, forcedTransfer
+│   ├── GoldToken.compliance.test.ts# Min/max limits, country whitelist, module removal
+│   └── GoldToken.redemption.test.ts# Redemption lifecycle, proof of reserve, access control
 │
 ├── backend/
 │   ├── src/
@@ -201,9 +205,25 @@ npm run compile
 ### 4 — Run the test suite
 
 ```bash
+# Run all 35 tests across all files
 npm test
-# Expected: 11 passing
+
+# Run a single area
+npx hardhat test test/GoldToken.reserve.test.ts
+npx hardhat test test/GoldToken.transfer.test.ts
+npx hardhat test test/GoldToken.compliance.test.ts
+npx hardhat test test/GoldToken.redemption.test.ts
+
+# Run two areas together
+npx hardhat test test/GoldToken.reserve.test.ts test/GoldToken.compliance.test.ts
 ```
+
+| File | Coverage |
+|---|---|
+| `GoldToken.reserve.test.ts` | Reserve cap, bar deactivation, batchMint (9 tests) |
+| `GoldToken.transfer.test.ts` | KYC gating, freeze/unfreeze, transferFrom, forcedTransfer (12 tests) |
+| `GoldToken.compliance.test.ts` | Min/max limits, country whitelist, module removal, parameter updates (6 tests) |
+| `GoldToken.redemption.test.ts` | Redemption lifecycle, proof of reserve, access control (8 tests) |
 
 ### 5 — Start the stack
 

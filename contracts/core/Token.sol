@@ -203,7 +203,7 @@ contract Token is
     function batchMint(
         address[] calldata toList,
         uint256[] calldata amounts
-    ) external onlyRole(SUPPLY_MODIFIER) {
+    ) external virtual onlyRole(SUPPLY_MODIFIER) {
         require(toList.length == amounts.length, "Token: length mismatch");
         for (uint256 i = 0; i < toList.length; i++) {
             _mint(toList[i], amounts[i]);
