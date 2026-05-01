@@ -2,6 +2,13 @@
 
 A proof-of-concept for physical gold tokenization built on the **ERC-3643 / T-REX** security token standard. Each token represents one gram of LBMA-grade gold held in a custodian vault, with on-chain reserve enforcement, KYC/compliance gating, and a full redemption lifecycle.
 
+### Production path
+
+| Document | Purpose |
+|---|---|
+| [PRODUCTION_UPGRADE_READINESS.md](PRODUCTION_UPGRADE_READINESS.md) | What needs to change to make this POC production-ready (upgrade path) |
+| [PRODUCTION_FRESH_START.md](PRODUCTION_FRESH_START.md) | Phase-by-phase instructions for a clean production rebuild with Claude Code |
+
 ---
 
 ## Architecture
