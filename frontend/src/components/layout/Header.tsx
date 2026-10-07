@@ -3,10 +3,10 @@ import { Sun, Moon, LayoutDashboard, ShieldCheck, User, CircleHelp } from 'lucid
 import { useTheme } from '../../hooks/useTheme';
 
 const NAV = [
-  { to: '/',         label: 'Reserve',  Icon: LayoutDashboard },
-  { to: '/about',    label: 'Demo',     Icon: CircleHelp },
-  { to: '/admin',    label: 'Admin',    Icon: ShieldCheck },
-  { to: '/investor', label: 'Investor', Icon: User },
+  { to: '/',         label: 'Reserve',      Icon: LayoutDashboard },
+  { to: '/admin',    label: 'Admin',        Icon: ShieldCheck },
+  { to: '/investor', label: 'Investor',     Icon: User },
+  { to: '/about',    label: 'How It Works', Icon: CircleHelp },
 ];
 
 export default function Header() {
