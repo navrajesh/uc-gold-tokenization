@@ -1,4 +1,5 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { JsonRpcProvider, Contract } from 'ethers';
 import { Search, Coins, ArrowDownToLine, Clock } from 'lucide-react';
 import { api } from '../lib/api';

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { FormEvent } from 'react';
 import {
   Coins, Package, Users, ArrowLeftRight, Hammer, TrendingUp,
   Plus, CheckCircle, XCircle, Truck, ChevronDown, ChevronUp,
