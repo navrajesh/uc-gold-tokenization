@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Sun, Moon, LayoutDashboard, ShieldCheck, User } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck, User, CircleHelp } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 
 const NAV = [
   { to: '/',         label: 'Reserve',  Icon: LayoutDashboard },
+  { to: '/about',    label: 'Demo',     Icon: CircleHelp },
   { to: '/admin',    label: 'Admin',    Icon: ShieldCheck },
   { to: '/investor', label: 'Investor', Icon: User },
 ];
@@ -32,6 +33,7 @@ export default function Header() {
               key={to}
               to={to}
               end={to === '/'}
+              aria-label={label}
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                 ${isActive

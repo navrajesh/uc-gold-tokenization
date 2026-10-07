@@ -4,6 +4,7 @@ import Header from './components/layout/Header';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 import InvestorPortal from './pages/InvestorPortal';
+import AboutDemo from './pages/AboutDemo';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <main>
             <Routes>
               <Route path="/"         element={<Dashboard />} />
+              <Route path="/about"    element={<AboutDemo />} />
               <Route path="/admin"    element={<AdminPanel />} />
               <Route path="/investor" element={<InvestorPortal />} />
             </Routes>

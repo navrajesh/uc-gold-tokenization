@@ -103,6 +103,7 @@ Location: `frontend/`
 - Production API requests use same-origin relative `/api/...` paths.
 - Main pages:
   - `Dashboard.tsx`: token/reserve overview.
+  - `AboutDemo.tsx`: visual explanation of the demo lifecycle and participants.
   - `AdminPanel.tsx`: token, bar, KYC, redemption, mint, and price actions.
   - `InvestorPortal.tsx`: wallet balance lookup and redemption submission.
 - Theme preference is stored in browser `localStorage` under `gold-theme`.
