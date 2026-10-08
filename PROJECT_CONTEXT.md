@@ -12,6 +12,8 @@ Last reviewed: **2026-10-07**
 - Primary branch: `main`
 - Project stage: proof of concept (POC), not production-ready
 - Latest pushed commits at the time of this note:
+  - `a173932` (`Link demo records to Amoy explorer`)
+  - `d9e0f89` (`Update hosted demo project context`)
   - `606fc13` (`Record Polygon Amoy deployment`)
   - `2bbdffd` (`Fix Vercel backend packaging`)
   - `09d4f0d` (`Add Amoy and Turso hosted demo support`)
@@ -109,11 +111,14 @@ Location: `frontend/`
 - Vite proxies `/api` to `http://localhost:3001` during local development.
 - Production API requests use same-origin relative `/api/...` paths.
 - Main pages:
-- `Dashboard.tsx`: token/reserve overview plus public PolygonScan Amoy links
-  for the deployed token stack.
+  - `Dashboard.tsx`: token/reserve overview plus public PolygonScan Amoy links
+    for the deployed token stack.
   - `AboutDemo.tsx`: visual explanation of the demo lifecycle and participants.
   - `AdminPanel.tsx`: token, bar, KYC, redemption, mint, and price actions.
   - `InvestorPortal.tsx`: wallet balance lookup and redemption submission.
+- `ExplorerLink.tsx` consistently links public wallet, contract, and transaction
+  records to PolygonScan Amoy. Zero/placeholder transaction hashes are rendered
+  as unavailable rather than as dead links.
 - Theme preference is stored in browser `localStorage` under `gold-theme`.
 
 ### Deployment scripts
@@ -296,6 +301,48 @@ TypeScript/Vite production build, deployment-script typechecking, and
 `git diff --check`. One first test run encountered a one-second timestamp-boundary
 flake in the redemption event assertion; the immediate full rerun passed all 11.
 
+### 2026-10-07 Amoy explorer integration
+
+Commit `a173932` added an **On-chain Verification** panel to the dashboard and
+inline PolygonScan Amoy links throughout the Admin and Investor views. Visible
+records include the token proxy, deployment transaction, reserve and compliance
+contracts, identity registry, public role wallets, bar-registration transaction,
+mint transaction, and redemption burn transaction when present.
+
+The initial deployment file predated transaction-hash capture. The proxy
+creation and `GB-2024-001` registration hashes were recovered from PolygonScan,
+validated against the public contract activity (including the `registerBar`
+method selector), and committed to `deployments/amoy.json`.
+
+The protected recovery behavior is now idempotent:
+
+- Reposting an existing token with a valid `DEMO_SEED_TOKEN` can replace its
+  placeholder transaction hash.
+- Re-importing an existing bar with a valid seed token can fill its missing
+  registration hash.
+- `npm run register:amoy` performed both Turso updates successfully and did not
+  deploy contracts or send any blockchain transaction.
+
+The personal Vercel production deployment for `a173932` reached `Ready`, and
+the primary alias remained `https://uc-gold-tokenization-ten.vercel.app`.
+Post-deployment verification confirmed:
+
+- `/health`, `/api/tokens`, and `/api/reserves` returned HTTP 200.
+- Both repaired transaction hashes were returned by the hosted API.
+- Reserve summary source remained `chain`.
+- A rendered-browser inspection found the On-chain Verification panel, all
+  expected contract/wallet links, and the bar-registration transaction link.
+- Backend production build passed.
+- Frontend TypeScript/Vite production build passed; the existing non-blocking
+  chunk-size warning remains.
+- Focused linting of the new explorer component/helper passed.
+
+Repository-wide frontend lint was already not clean: it reports existing issues
+in `Tooltip.tsx`, `useTheme.tsx`, and effect patterns in `AdminPanel.tsx` and
+`Dashboard.tsx`. A root `npx tsc --noEmit` also reports existing Hardhat test
+contract-cast diagnostics. These did not affect either production build and
+were not introduced or changed by the explorer feature.
+
 ### 2026-10-07 Vercel Services runtime packaging failure
 
 Commit `09d4f0d` built successfully, but every backend invocation failed with
@@ -360,6 +407,10 @@ This is intentionally a POC. Important gaps visible in the current code:
   are meant to receive identity-country data.
 - Logging, rate limiting, audit trails, monitoring, secret rotation, backups,
   and incident controls are not implemented.
+- A private-looking 64-character value and an Alchemy endpoint were displayed
+  in earlier chat/IDE context. If they have not already been rotated, treat them
+  as exposed and replace the affected seed token, testnet wallet, and/or Alchemy
+  key in local and Vercel configuration. Never record the values here.
 - The local dependency install reported npm audit findings on 2026-10-07. They
   were not investigated as part of the compiler fix and should be reviewed
   before any production release.
