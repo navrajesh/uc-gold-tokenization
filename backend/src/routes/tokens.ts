@@ -1,13 +1,23 @@
 import { Router } from 'express';
 import {
   insertToken, getAllTokens, getTokenByAddress,
-  updateTokenReserveAddress,
+  updateTokenReserveAddress, updateTokenTransactionHash,
 } from '../services/storage';
 import {
   mintTokens, getTokenOnChainInfo, getTokenBalance, checkTransferCompliance,
 } from '../services/blockchain';
+import { config } from '../config';
 
 const router = Router();
+
+function hasSeedAccess(token: string | undefined): boolean {
+  if (!config.demoSeedToken) return config.nodeEnv !== 'production';
+  return token === config.demoSeedToken;
+}
+
+function isTransactionHash(value: string): boolean {
+  return /^0x[0-9a-fA-F]{64}$/.test(value) && !/^0x0{64}$/.test(value);
+}
 
 // GET /api/tokens — list all registered tokens
 router.get('/', async (_req, res, next) => {
@@ -74,7 +84,13 @@ router.post('/', async (req, res, next) => {
     }
 
     const existing = await getTokenByAddress(address);
-    if (existing) return res.status(409).json({ error: 'Token already registered', token: existing });
+    if (existing) {
+      if (hasSeedAccess(req.header('x-demo-seed-token')) && isTransactionHash(txHash)) {
+        const token = await updateTokenTransactionHash(existing.address, txHash);
+        return res.json(token);
+      }
+      return res.status(409).json({ error: 'Token already registered', token: existing });
+    }
 
     const token = await insertToken({
       address,

@@ -109,7 +109,8 @@ Location: `frontend/`
 - Vite proxies `/api` to `http://localhost:3001` during local development.
 - Production API requests use same-origin relative `/api/...` paths.
 - Main pages:
-  - `Dashboard.tsx`: token/reserve overview.
+- `Dashboard.tsx`: token/reserve overview plus public PolygonScan Amoy links
+  for the deployed token stack.
   - `AboutDemo.tsx`: visual explanation of the demo lifecycle and participants.
   - `AdminPanel.tsx`: token, bar, KYC, redemption, mint, and price actions.
   - `InvestorPortal.tsx`: wallet balance lookup and redemption submission.
@@ -275,6 +276,10 @@ The selected hosted stack is deployed and verified:
 - The deployed contract map is committed in `deployments/amoy.json`; contract
   and account addresses there are public testnet data, not credentials.
 - `SGT999` proxy: `0x3d5da18354C3c7856B20090790a94aD6E112e960`.
+- The original proxy-deployment and bar-registration transaction hashes were
+  recovered from PolygonScan and added to the deployment map. The protected,
+  idempotent `register:amoy` recovery path can update those hashes in Turso
+  without making another blockchain transaction.
 
 The initial contract deployment completed on-chain, but its backend registration
 requests failed while the Vercel function packaging issue below was present.

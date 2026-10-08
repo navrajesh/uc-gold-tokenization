@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { Search, Coins, ArrowDownToLine, Clock } from 'lucide-react';
 import { api } from '../lib/api';
-import { formatGrams, formatUsd, formatDate, shortAddress } from '../lib/utils';
+import { formatGrams, formatUsd, formatDate } from '../lib/utils';
 import type { Token, Redemption, GoldPrice } from '../lib/types';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -11,6 +11,7 @@ import { StatusBadge, Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { HelpTooltip } from '../components/ui/Tooltip';
+import { ExplorerLink } from '../components/ui/ExplorerLink';
 
 export default function InvestorPortal() {
   const [wallet,      setWallet]      = useState('');
@@ -162,12 +163,18 @@ export default function InvestorPortal() {
               <div className="mt-4 pt-4 border-t border-stone-100 dark:border-zinc-800 text-xs text-zinc-400 dark:text-zinc-500 space-y-1">
                 <div className="flex justify-between">
                   <span>Wallet</span>
-                  <span className="font-mono">{shortAddress(wallet, 8)}</span>
+                  <ExplorerLink value={wallet} kind="address" chars={8} />
                 </div>
                 <div className="flex justify-between">
                   <span>Token</span>
                   <span>{selectedToken?.name}</span>
                 </div>
+                {selectedToken && (
+                  <div className="flex justify-between">
+                    <span>Token contract</span>
+                    <ExplorerLink value={selectedToken.address} kind="address" chars={8} />
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Purity</span>
                   <span>{selectedToken?.purityStandard ?? '—'} fine gold</span>
@@ -258,7 +265,7 @@ export default function InvestorPortal() {
                       <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
                       <td className="px-5 py-3 text-zinc-400 text-xs whitespace-nowrap">{formatDate(r.requestedAt)}</td>
                       <td className="px-5 py-3 font-mono text-xs text-zinc-400">
-                        {r.burnTxHash ? shortAddress(r.burnTxHash) : '—'}
+                        {r.burnTxHash ? <ExplorerLink value={r.burnTxHash} kind="tx" /> : '—'}
                       </td>
                     </tr>
                   ))}

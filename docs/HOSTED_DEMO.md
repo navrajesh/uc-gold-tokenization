@@ -100,15 +100,19 @@ npm run register:amoy
 
 This command performs only the Turso/backend bookkeeping for the existing
 contracts; it does not deploy, mint, transfer, or register identities on-chain.
+It is safe to rerun for the recorded deployment and can fill in recovered
+deployment or bar-registration transaction hashes without another chain write.
 
 ## 5. Verify the hosted story
 
 1. Open `/api/tokens` and confirm `SGT999` is returned.
-2. Open the Reserve page and confirm the reserve and minted supply are visible.
-3. Open Investor, select `SGT999`, and look up either configured investor
+2. Open the dashboard's **On-chain Verification** panel and follow the token,
+   contract, wallet, and transaction links to PolygonScan Amoy.
+3. Confirm the reserve and minted supply are visible.
+4. Open Investor, select `SGT999`, and look up either configured investor
    address; it should show 100 g or 75 g.
-4. Submit a small redemption request and confirm it appears as `PENDING`.
-5. Show the How It Works page to explain the custody, tokenization, compliance,
+5. Submit a small redemption request and confirm it appears as `PENDING`.
+6. Show the How It Works page to explain the custody, tokenization, compliance,
    and redemption lifecycle.
 
 ## Demo boundary

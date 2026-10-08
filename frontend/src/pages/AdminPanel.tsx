@@ -14,6 +14,7 @@ import { StatusBadge, Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { HelpTooltip } from '../components/ui/Tooltip';
+import { ExplorerLink } from '../components/ui/ExplorerLink';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 const TABS = [
@@ -26,12 +27,17 @@ const TABS = [
 ] as const;
 type TabId = typeof TABS[number]['id'];
 
-function Toast({ msg, ok }: { msg: string; ok: boolean }) {
+function Toast({ msg, ok, txHash }: { msg: string; ok: boolean; txHash?: string }) {
   return (
     <div className={`rounded-lg border px-4 py-2.5 text-sm ${ok
       ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300'
       : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-300'}`}>
       {msg}
+      {txHash && (
+        <span className="ml-2">
+          <ExplorerLink value={txHash} kind="tx" label="View transaction" />
+        </span>
+      )}
     </div>
   );
 }
@@ -101,6 +107,7 @@ function TokensTab({ tokens, reload }: { tokens: Token[]; reload: () => void }) 
                     { label: 'Symbol',   help: 'Token ticker symbol (e.g. SGT999). Shown in displays and used to distinguish between deployed tokens.' },
                     { label: 'Name',     help: 'Full descriptive name of the token (e.g. Singapore Fine Gold).' },
                     { label: 'Address',  help: 'Ethereum address of the UUPS proxy contract. This is the canonical address users interact with — the implementation can be upgraded behind it without changing this address.' },
+                    { label: 'Deploy Tx', help: 'Transaction that deployed the token proxy on Polygon Amoy.' },
                     { label: 'Purity',   help: 'Gold fineness standard this token represents (e.g. 999.9 for fine gold, 916 for 22-karat gold).' },
                     { label: 'Deployed', help: 'Date the token was registered in the backend database.' },
                   ].map(({ label, help }) => (
@@ -114,7 +121,8 @@ function TokensTab({ tokens, reload }: { tokens: Token[]; reload: () => void }) 
                     <tr key={t.address} className="border-b last:border-0 border-stone-50 dark:border-zinc-800/50 hover:bg-stone-50 dark:hover:bg-zinc-800/30">
                       <td className="px-5 py-3"><Badge variant="gold">{t.symbol}</Badge></td>
                       <td className="px-5 py-3 font-medium text-zinc-900 dark:text-zinc-100">{t.name}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-zinc-500">{shortAddress(t.address)}</td>
+                      <td className="px-5 py-3 text-xs"><ExplorerLink value={t.address} kind="address" /></td>
+                      <td className="px-5 py-3 text-xs"><ExplorerLink value={t.txHash} kind="tx" /></td>
                       <td className="px-5 py-3 text-zinc-600 dark:text-zinc-300">{t.purityStandard ?? '—'}</td>
                       <td className="px-5 py-3 text-zinc-400 text-xs whitespace-nowrap">{formatDate(t.deployedAt)}</td>
                     </tr>
@@ -218,6 +226,7 @@ function BarsTab({ tokens }: { tokens: Token[] }) {
                     { label: 'Purity',    help: 'Gold purity in basis points. 9999 = 99.99% fine gold. 9160 = 91.6% (916 standard / 22-karat).' },
                     { label: 'Vault',     help: 'Physical storage facility ID where this bar is held (e.g. Vault-SG-A, Vault-SG-B).' },
                     { label: 'Custodian', help: 'Institution responsible for safeguarding this bar (e.g. Brinks Singapore). Off-chain field stored in the backend database.' },
+                    { label: 'On-chain Tx', help: 'Transaction that registered this bar in the GoldReserve contract.' },
                     { label: 'Status',    help: 'Active = counted in vault total. Deactivating removes the bar weight from the reserve, reducing how many tokens can be minted.' },
                     { label: '' },
                   ].map(({ label, help }, i) => (
@@ -234,6 +243,9 @@ function BarsTab({ tokens }: { tokens: Token[] }) {
                       <td className="px-5 py-3"><Badge variant="gold">{formatPurityBps(bar.purityBps)}</Badge></td>
                       <td className="px-5 py-3 text-zinc-600 dark:text-zinc-300">{bar.vaultId}</td>
                       <td className="px-5 py-3 text-zinc-500">{bar.custodian}</td>
+                      <td className="px-5 py-3 text-xs">
+                        {bar.txHash ? <ExplorerLink value={bar.txHash} kind="tx" /> : '—'}
+                      </td>
                       <td className="px-5 py-3"><StatusBadge status={bar.active ? 'Active' : 'Inactive'} /></td>
                       <td className="px-5 py-3">
                         {bar.active && (
@@ -323,7 +335,7 @@ function KycTab({ tokens }: { tokens: Token[] }) {
                 <tbody>
                   {identities.map(id => (
                     <tr key={id.address} className="border-b last:border-0 border-stone-50 dark:border-zinc-800/50 hover:bg-stone-50 dark:hover:bg-zinc-800/30">
-                      <td className="px-5 py-3 font-mono text-xs text-zinc-900 dark:text-zinc-100">{id.address}</td>
+                      <td className="px-5 py-3 text-xs"><ExplorerLink value={id.address} kind="address" chars={8} /></td>
                       <td className="px-5 py-3 text-zinc-500">{id.countryCode ?? '—'}</td>
                       <td className="px-5 py-3"><StatusBadge status={id.isVerified ? 'Active' : 'Inactive'} /></td>
                       <td className="px-5 py-3 text-zinc-400 text-xs whitespace-nowrap">{formatDate(id.registeredAt)}</td>
@@ -419,10 +431,10 @@ function RedemptionsTab({ tokens }: { tokens: Token[] }) {
                   </div>
                   {expanded === r.redemptionRef && (
                     <div className="px-5 pb-4 bg-stone-50/50 dark:bg-zinc-800/20 text-xs text-zinc-500 dark:text-zinc-400 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <span><b>Investor:</b> {shortAddress(r.investorAddress, 8)}</span>
+                      <span><b>Investor:</b> <ExplorerLink value={r.investorAddress} kind="address" chars={8} /></span>
                       <span><b>Requested:</b> {formatDate(r.requestedAt)}</span>
                       <span><b>Delivery:</b> {r.deliveryAddress ?? '—'}</span>
-                      {r.burnTxHash && <span className="col-span-2"><b>Burn tx:</b> <span className="font-mono">{shortAddress(r.burnTxHash)}</span></span>}
+                      {r.burnTxHash && <span className="col-span-2"><b>Burn tx:</b> <ExplorerLink value={r.burnTxHash} kind="tx" /></span>}
                       {r.rejectReason && <span className="col-span-2 text-red-500"><b>Reason:</b> {r.rejectReason}</span>}
                     </div>
                   )}
@@ -439,7 +451,7 @@ function RedemptionsTab({ tokens }: { tokens: Token[] }) {
 function MintTab({ tokens }: { tokens: Token[] }) {
   const [form, setForm] = useState({ tokenAddress: tokens[0]?.address ?? '', to: '', grams: '' });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean; txHash?: string } | null>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -449,7 +461,7 @@ function MintTab({ tokens }: { tokens: Token[] }) {
     const amountWei = (BigInt(Math.round(Number(form.grams))) * (10n ** BigInt(token.decimals))).toString();
     try {
       const r = await api.mintTokens(token.address, form.to, amountWei);
-      setMsg({ text: `Minted ${form.grams}g → ${shortAddress(form.to)}. Tx: ${shortAddress(r.txHash)}`, ok: true });
+      setMsg({ text: `Minted ${form.grams}g → ${shortAddress(form.to)}.`, ok: true, txHash: r.txHash });
     } catch (err) { setMsg({ text: (err as Error).message, ok: false }); }
     finally { setSaving(false); }
   };
@@ -469,7 +481,7 @@ function MintTab({ tokens }: { tokens: Token[] }) {
               Requires: recipient KYC verified · vault reserve ≥ current supply + mint amount
             </p>
             <Button type="submit" loading={saving} className="w-full">Mint Tokens</Button>
-            {msg && <Toast msg={msg.text} ok={msg.ok} />}
+            {msg && <Toast msg={msg.text} ok={msg.ok} txHash={msg.txHash} />}
           </form>
         </CardBody>
       </Card>

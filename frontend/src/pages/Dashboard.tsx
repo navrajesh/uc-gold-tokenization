@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Vault, Coins, Scale, DollarSign, Package } from 'lucide-react';
+import { RefreshCw, Vault, Coins, Scale, DollarSign, Package, ExternalLink } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatGrams, formatUsd, formatWeiToGrams, formatPurityBps, formatDate, reserveRatio } from '../lib/utils';
 import type { Token, GoldBar, GoldPrice } from '../lib/types';
@@ -10,6 +10,21 @@ import { StatusBadge, Badge } from '../components/ui/Badge';
 import { PageSpinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { HelpTooltip } from '../components/ui/Tooltip';
+import { ExplorerLink } from '../components/ui/ExplorerLink';
+import { AMOY_EXPLORER_URL } from '../lib/explorer';
+
+function ChainRecord({ label, value, kind = 'address' }: {
+  label: string;
+  value: string;
+  kind?: 'address' | 'tx';
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-stone-100 bg-stone-50/70 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/30">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{label}</p>
+      <ExplorerLink value={value} kind={kind} chars={8} className="max-w-full text-xs" />
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [tokens,      setTokens]      = useState<Token[]>([]);
@@ -145,6 +160,35 @@ export default function Dashboard() {
             />
           </div>
 
+          {/* Public blockchain records */}
+          {selected && (
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>On-chain Verification <HelpTooltip text="These public contract, wallet, and transaction records open directly in the Polygon Amoy block explorer. They provide independently verifiable evidence of the demo's deployed infrastructure and activity." /></CardTitle>
+                  <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">Public proof for the selected token deployment</p>
+                </div>
+                <a
+                  href={AMOY_EXPLORER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-600 hover:underline dark:text-amber-400 dark:hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-sm"
+                >
+                  Polygon Amoy <ExternalLink size={12} aria-hidden="true" />
+                </a>
+              </CardHeader>
+              <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ChainRecord label="Token proxy" value={selected.address} />
+                <ChainRecord label="Deployment transaction" value={selected.txHash} kind="tx" />
+                {selected.goldReserveAddress && <ChainRecord label="Gold reserve" value={selected.goldReserveAddress} />}
+                <ChainRecord label="Identity registry" value={selected.identityRegistryAddress} />
+                <ChainRecord label="Compliance contract" value={selected.complianceAddress} />
+                <ChainRecord label="Deployer wallet" value={selected.deployer} />
+                {selected.custodianAddress && <ChainRecord label="Custodian wallet" value={selected.custodianAddress} />}
+              </CardBody>
+            </Card>
+          )}
+
           {/* Reserve ratio bar */}
           <Card>
             <CardBody className="py-3">
@@ -192,6 +236,7 @@ export default function Dashboard() {
                         { label: 'Purity',     help: 'Gold purity in basis points. 9999 = 99.99% fine gold (999.9 standard). 9160 = 91.6% (916 standard / 22-karat).' },
                         { label: 'Vault',      help: 'ID of the secure vault facility where this bar is physically stored (e.g. Vault-SG-A).' },
                         { label: 'Assay Ref',  help: 'Reference number of the independent assay certificate that verifies this bar\'s weight and purity.' },
+                        { label: 'On-chain Tx', help: 'Transaction that registered this physical bar in the GoldReserve contract.' },
                         { label: 'Registered', help: 'Date and time the bar was registered on-chain via the GoldReserve smart contract.' },
                         { label: 'Status',     help: 'Active bars count in the vault total. Deactivating a bar reduces reserve headroom, limiting how many tokens can be minted.' },
                       ].map(({ label, help }) => (
@@ -214,6 +259,9 @@ export default function Dashboard() {
                         </td>
                         <td className="px-5 py-3 text-zinc-600 dark:text-zinc-300">{bar.vaultId}</td>
                         <td className="px-5 py-3 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{bar.assayRef ?? '—'}</td>
+                        <td className="px-5 py-3 text-xs">
+                          {bar.txHash ? <ExplorerLink value={bar.txHash} kind="tx" /> : '—'}
+                        </td>
                         <td className="px-5 py-3 text-zinc-400 dark:text-zinc-500 text-xs whitespace-nowrap">{formatDate(bar.registeredAt)}</td>
                         <td className="px-5 py-3">
                           <StatusBadge status={bar.active ? 'Active' : 'Inactive'} />

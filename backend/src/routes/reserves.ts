@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   insertGoldBar, getGoldBar, getAllGoldBars, getActiveGoldBars,
   deactivateGoldBar, getTotalActiveWeightGrams as getTotalFromDb,
-  getTokenByAddress,
+  getTokenByAddress, updateGoldBarTransactionHash,
 } from '../services/storage';
 import {
   registerBarOnChain, deactivateBarOnChain, getTotalActiveWeightGrams,
@@ -14,6 +14,10 @@ const router = Router();
 function hasSeedAccess(token: string | undefined): boolean {
   if (!config.demoSeedToken) return config.nodeEnv !== 'production';
   return token === config.demoSeedToken;
+}
+
+function isTransactionHash(value: string): boolean {
+  return /^0x[0-9a-fA-F]{64}$/.test(value) && !/^0x0{64}$/.test(value);
 }
 
 // GET /api/reserves?tokenAddress= — list all bars (optionally filtered by token)
@@ -133,7 +137,13 @@ router.post('/import', async (req, res, next) => {
     if (!token) return res.status(404).json({ error: 'Token not found' });
 
     const existing = await getGoldBar(barId);
-    if (existing) return res.status(409).json({ error: 'Bar already imported', bar: existing });
+    if (existing) {
+      if (txHash && isTransactionHash(txHash)) {
+        const bar = await updateGoldBarTransactionHash(existing.barId, txHash);
+        return res.json(bar);
+      }
+      return res.status(409).json({ error: 'Bar already imported', bar: existing });
+    }
 
     const bar = await insertGoldBar({
       barId,

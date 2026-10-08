@@ -36,6 +36,16 @@ export async function updateTokenReserveAddress(address: string, reserveAddress:
     .run();
 }
 
+export async function updateTokenTransactionHash(address: string, txHash: string): Promise<Token | undefined> {
+  const rows = await getDb()
+    .update(tokens)
+    .set({ txHash })
+    .where(eq(sql`lower(${tokens.address})`, address.toLowerCase()))
+    .returning()
+    .all();
+  return rows[0];
+}
+
 // ─── Identities ───────────────────────────────────────────────────────────────
 
 export async function upsertIdentity(identity: NewIdentity): Promise<Identity> {
@@ -114,6 +124,16 @@ export async function deactivateGoldBar(barId: string): Promise<void> {
     .set({ active: false })
     .where(eq(goldBars.barId, barId))
     .run();
+}
+
+export async function updateGoldBarTransactionHash(barId: string, txHash: string): Promise<GoldBar | undefined> {
+  const rows = await getDb()
+    .update(goldBars)
+    .set({ txHash })
+    .where(eq(goldBars.barId, barId))
+    .returning()
+    .all();
+  return rows[0];
 }
 
 export async function getTotalActiveWeightGrams(tokenAddress: string): Promise<number> {

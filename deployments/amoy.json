@@ -5,10 +5,12 @@
   "tokens": {
     "SGT999": {
       "proxy": "0x3d5da18354C3c7856B20090790a94aD6E112e960",
+      "deploymentTxHash": "0xd3cd36939576979dbda5f663c9acc70810d16379a345d40945b77ec29230ef85",
       "implementation": "0x17a957A7a2436922dADB01164516888dd97B2f5E",
       "identityRegistry": "0x8A02FA164f54BedF55d4293795020422034FA346",
       "compliance": "0xcF04aEDfc2dCb64bA83E9668093538A927038B3d",
       "goldReserve": "0xa42aaaf24DDDC104859687C8c1cd0775Ae64b6A1",
+      "barRegistrationTxHash": "0x069eb7b3ebe6234c5d39f055b4242a9256b818a59961cfb886c09d7af541ee0a",
       "complianceModules": {
         "countryRestrictions": "0x2e8541dA83F65Af2260F847928EEe4Fab633726D",
         "maxWalletBalance": "0x78B6446C40Ce61De32577AB8dc24977ee4211629",
