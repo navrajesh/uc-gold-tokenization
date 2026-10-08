@@ -11,8 +11,8 @@ Last reviewed: **2026-10-07**
 - Repository: `https://github.com/navrajesh/uc-gold-tokenization.git`
 - Primary branch: `main`
 - Project stage: proof of concept (POC), not production-ready
-- Latest verified functional commit at the time of this note: `c742e5d`
-  (`Fix frontend type-only imports`)
+- Latest pushed UI commit at the time of this note: `2754972`
+  (`Rename and reorder info navigation`)
 - Intended local commit identity for this clone:
   `Rajesh Nkrishnan <navrajesh@gmail.com>`
 - The email override is stored in `.git/config`; it is local machine state and
@@ -63,7 +63,8 @@ Hardhat networks currently configured:
 
 - In-process `hardhat`, chain ID `31337`.
 - `localhost`, `http://127.0.0.1:8545`, chain ID `31337`.
-- No public testnet or mainnet network is configured in `hardhat.config.ts`.
+- `amoy`, chain ID `80002`, using `AMOY_RPC_URL` and two testnet-only signer
+  keys from the root `.env`.
 
 ### Backend
 
@@ -75,6 +76,8 @@ Location: `backend/`
 - Entrypoint: `backend/src/server.ts`.
 - Default port: `3001`.
 - Local database path: `backend/data/gold.db` after TypeScript path resolution.
+- When `TURSO_DATABASE_URL` is set, the same client and schema use remote Turso
+  storage authenticated by `TURSO_AUTH_TOKEN`.
 - Database tables are bootstrapped in code by `backend/src/db/index.ts`.
 - An initial manual price of USD 85/gram is inserted when no price exists.
 - Chain write operations are signed by private keys held by the backend.
@@ -82,7 +85,8 @@ Location: `backend/`
 API route groups:
 
 - `GET /health`
-- `/api/tokens`: register tokens, fetch token metadata, mint, compliance check.
+- `/api/tokens`: register tokens, fetch metadata and server-side live balances,
+  mint, and run compliance checks.
 - `/api/reserves`: list/register/deactivate physical gold bars.
 - `/api/identities`: list/register/update KYC identities.
 - `/api/redemptions`: create, approve, fulfill, and reject redemptions.
@@ -112,10 +116,14 @@ Location: `frontend/`
 
 - `scripts/deploy/01-deploy-gold-token.ts`: deploys and seeds `SGT999`.
 - `scripts/deploy/02-deploy-sgt916.ts`: deploys and seeds `SGT916`.
-- Local deployment addresses are written to `deployments/localhost.json`, which
-  is intentionally ignored by Git.
-- Deployment scripts attempt to register the resulting contracts and demo data
-  with the backend at `http://localhost:3001`.
+- Deployment addresses are written to `deployments/<network>.json`; only the
+  local file is ignored by Git.
+- Deployment scripts register contracts and demo data with `DEMO_API_URL`
+  (falling back to `http://localhost:3001`). Already-mined reserve transactions
+  use the protected `/api/reserves/import` bookkeeping route rather than
+  submitting the same bar on-chain twice.
+- Amoy seeding distributes tokens to two configurable public investor wallets
+  so the hosted Investor Portal starts with visible holdings.
 - Shell and Windows batch launchers live under `scripts/sh/` and `scripts/bat/`.
 
 ## Configuration
@@ -131,6 +139,13 @@ Backend environment variables are documented in `backend/.env.example`:
 | `CHAIN_ID` | Expected chain ID, locally `31337` |
 | `DEPLOYER_PRIVATE_KEY` | Signs admin, KYC, and mint operations |
 | `CUSTODIAN_PRIVATE_KEY` | Signs reserve and redemption operations |
+| `TURSO_DATABASE_URL` | Optional Turso/libSQL URL; local SQLite if empty |
+| `TURSO_AUTH_TOKEN` | Authenticates the remote Turso connection |
+| `DEMO_SEED_TOKEN` | Protects deployment-only database import operations |
+
+Root deployment variables are documented in `.env.example`: `AMOY_RPC_URL`,
+both testnet signer keys, two public demo investor addresses, `DEMO_API_URL`,
+and `DEMO_SEED_TOKEN`.
 
 The keys in `.env.example` are Hardhat's well-known test accounts. They are safe
 only for isolated local development and must never control real assets or be
@@ -239,28 +254,28 @@ result was not independently checked from this workspace, so future sessions
 should confirm the deployment state in Vercel rather than assuming runtime
 success from the local build alone.
 
-### Runtime items that still require deployment work
+### Hosted runtime status and remaining setup
 
-Passing the build does not make the current POC fully usable on a hosted URL.
-These facts come directly from the current code and should be addressed before
-claiming a working public deployment:
+The code now supports the selected hosted stack:
 
-1. `InvestorPortal.tsx` directly uses `http://127.0.0.1:8545` for balance
-   queries. In a hosted browser, that points at the visitor's own computer.
-2. The backend defaults to the same local RPC URL. A hosted environment needs a
-   reachable RPC provider and matching deployed contracts.
-3. The backend stores SQLite data at a local application path. Persistence and
-   write access in the selected hosted runtime have not been validated. A
-   durable external libSQL/Turso-style database or another hosted database is
-   likely required for reliable deployments.
-4. The backend bootstraps the database and calls `app.listen(...)` from its
-   module. Confirm this lifecycle against the actual deployment runtime.
-5. `FRONTEND_URL` must match the deployed frontend origin for CORS.
-6. Contract addresses created on a local Hardhat chain are not usable from a
-   hosted deployment. Deploy to a reachable network and register those
-   addresses in the hosted database.
-7. Production secrets must be stored in deployment environment variables, not
-   committed files.
+- Polygon Amoy is configured in Hardhat.
+- Alchemy-backed live balance reads go through the backend rather than exposing
+  the RPC URL in the frontend bundle.
+- Turso provides persistent libSQL storage when its two variables are set.
+- Amoy deployment scripts seed contract state, demo investor balances, and the
+  hosted database.
+
+The account credentials and final deployment still have to be configured by
+the repository owner. Follow `docs/HOSTED_DEMO.md`, set `FRONTEND_URL` to the
+real origin, fund both testnet signers with Amoy POL, deploy the contracts, and
+verify each hosted flow. The exported Express app follows Vercel's supported
+pattern, and cold-start requests wait for database initialization.
+
+The Amoy/Turso implementation was locally verified on 2026-10-07 with contract
+compilation, all 11 Hardhat tests, the backend TypeScript build, the frontend
+TypeScript/Vite production build, `git diff --check`, and a scan for accidentally
+added non-placeholder credentials. Live Alchemy, Turso, and Vercel integration
+cannot be verified until the private environment variables are configured.
 
 ## Security and production-readiness gaps
 
@@ -311,8 +326,10 @@ regulatory requirements have been addressed.
 - Gold price is an off-chain display value and does not affect contract logic.
 - Country restrictions default to passthrough until configured.
 - The demo max-wallet rule is 10,000 grams and the minimum transfer is 1 gram.
-- `SGT999` seed data uses a 1,000 g demo reserve and mints 1,000 tokens.
-- `SGT916` seed data uses a 500 g demo reserve and mints 200 tokens.
+- `SGT999` seed data uses a 1,000 g demo reserve, mints 1,000 tokens, and sends
+  100/75 tokens to the two configured investor addresses.
+- `SGT916` seed data uses a 500 g demo reserve, mints 200 tokens, and sends
+  25/20 tokens to the two configured investor addresses.
 
 ## Recent Git/authentication history
 

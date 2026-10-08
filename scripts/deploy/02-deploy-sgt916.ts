@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -6,8 +6,15 @@ async function main() {
   const signers = await ethers.getSigners();
   const deployer  = signers[0];
   const custodian = signers[1];
-  const investor1 = signers[2];
-  const investor2 = signers[3];
+  if (!deployer || !custodian) {
+    throw new Error("Two funded accounts are required: deployer and custodian");
+  }
+
+  const investor1Address = process.env.DEMO_INVESTOR_1_ADDRESS ?? signers[2]?.address;
+  const investor2Address = process.env.DEMO_INVESTOR_2_ADDRESS ?? signers[3]?.address;
+  if (!investor1Address || !investor2Address) {
+    throw new Error("Set DEMO_INVESTOR_1_ADDRESS and DEMO_INVESTOR_2_ADDRESS");
+  }
 
   console.log("=== SGT916 Gold Token Deployment ===");
   console.log("Deployer  :", deployer.address);
@@ -80,20 +87,21 @@ async function main() {
   console.log("GoldToken proxy  :", await proxy.getAddress());
 
   // ── 6. KYC register demo investors ───────────────────────────────────────
-  await (await identityRegistry.registerIdentity(investor1.address, true)).wait();
-  await (await identityRegistry.registerIdentity(investor2.address, true)).wait();
+  await (await identityRegistry.registerIdentity(investor1Address, true)).wait();
+  await (await identityRegistry.registerIdentity(investor2Address, true)).wait();
   await (await identityRegistry.registerIdentity(deployer.address,  true)).wait();
   console.log("KYC registered: deployer, investor1, investor2");
 
   // ── 7. Register a demo gold bar ───────────────────────────────────────────
-  const reserveAsCustodian = goldReserve.connect(custodian);
-  await (await reserveAsCustodian.registerBar(
+  const reserveAsCustodian = goldReserve.connect(custodian) as any;
+  const barTx = await reserveAsCustodian.registerBar(
     "GB916-2024-001",
     500,            // 500 grams
     9160,           // 916 purity (bps)
     "Vault-SG-B",
     "ASSAY-SG-916"
-  )).wait();
+  );
+  const barReceipt = await barTx.wait();
   console.log("Bar registered: GB916-2024-001 (500g, 916 purity)");
 
   // ── 8. Mint initial tokens ────────────────────────────────────────────────
@@ -101,18 +109,32 @@ async function main() {
   await (await (token as any).mint(deployer.address, MINT_AMOUNT)).wait();
   console.log("Minted 200 SGT916 to issuer:", deployer.address);
 
+  await (await (token as any).transfer(investor1Address, ethers.parseUnits("25", 18))).wait();
+  await (await (token as any).transfer(investor2Address, ethers.parseUnits("20", 18))).wait();
+  console.log("Distributed 25 SGT916 to investor1 and 20 SGT916 to investor2");
+
   // ── 9. Save / merge deployment addresses ─────────────────────────────────
   const proxyAddress    = await proxy.getAddress();
   const reserveAddress  = await goldReserve.getAddress();
   const registryAddress = await identityRegistry.getAddress();
   const complianceAddr  = await compliance.getAddress();
 
-  const deploymentFile = path.join(__dirname, "../../deployments/localhost.json");
+  const deploymentFile = path.join(__dirname, `../../deployments/${network.name}.json`);
   let existing: Record<string, any> = {};
   if (fs.existsSync(deploymentFile)) {
     existing = JSON.parse(fs.readFileSync(deploymentFile, "utf8"));
   }
 
+  const chain = await ethers.provider.getNetwork();
+  existing.network = network.name;
+  existing.chainId = Number(chain.chainId);
+  existing.deployedAt = existing.deployedAt ?? new Date().toISOString();
+  existing.accounts = existing.accounts ?? {
+    deployer: deployer.address,
+    custodian: custodian.address,
+    investor1: investor1Address,
+    investor2: investor2Address,
+  };
   existing.tokens = existing.tokens ?? {};
   existing.tokens["SGT916"] = {
     proxy:            proxyAddress,
@@ -135,16 +157,21 @@ async function main() {
   console.log("Proxy         :", proxyAddress);
   console.log("Total supply  :", ethers.formatUnits(await (token as any).totalSupply(), 18), "SGT916");
   console.log("Reserve grams :", (await goldReserve.getTotalActiveWeightGrams()).toString());
-  console.log("Saved to      : deployments/localhost.json");
+  console.log(`Network       : ${network.name} (${chain.chainId})`);
+  console.log(`Saved to      : deployments/${network.name}.json`);
 
   // ── 10. Register with backend API ────────────────────────────────────────
-  const API = "http://localhost:3001";
+  const API = process.env.DEMO_API_URL ?? "http://localhost:3001";
+  const seedHeaders = {
+    "Content-Type": "application/json",
+    "x-demo-seed-token": process.env.DEMO_SEED_TOKEN ?? "",
+  };
   console.log("\n==> Registering with backend API...");
   try {
     // Token
     const tokenRes = await fetch(`${API}/api/tokens`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: seedHeaders,
       body: JSON.stringify({
         address:                 proxyAddress,
         name:                    "Singapore Gold 916",
@@ -168,9 +195,9 @@ async function main() {
     }
 
     // Gold bar
-    const barRes = await fetch(`${API}/api/reserves`, {
+    const barRes = await fetch(`${API}/api/reserves/import`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: seedHeaders,
       body: JSON.stringify({
         tokenAddress: proxyAddress,
         barId:        "GB916-2024-001",
@@ -178,6 +205,8 @@ async function main() {
         purityBps:    9160,
         vaultId:      "Vault-SG-B",
         assayRef:     "ASSAY-SG-916",
+        custodian:    custodian.address,
+        txHash:       barReceipt?.hash ?? barTx.hash,
       }),
     });
     if (barRes.status === 409 || barRes.status === 400) {
@@ -191,12 +220,12 @@ async function main() {
     // KYC identities
     for (const [label, addr] of [
       ["deployer",  deployer.address],
-      ["investor1", investor1.address],
-      ["investor2", investor2.address],
+      ["investor1", investor1Address],
+      ["investor2", investor2Address],
     ] as [string, string][]) {
       const idRes = await fetch(`${API}/api/identities`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: seedHeaders,
         body: JSON.stringify({ address: addr, tokenAddress: proxyAddress, countryCode: "SG" }),
       });
       if (idRes.status === 409) {

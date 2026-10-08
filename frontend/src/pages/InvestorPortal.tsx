@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { JsonRpcProvider, Contract } from 'ethers';
 import { Search, Coins, ArrowDownToLine, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatGrams, formatUsd, formatDate, shortAddress } from '../lib/utils';
@@ -12,23 +11,6 @@ import { StatusBadge, Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { HelpTooltip } from '../components/ui/Tooltip';
-
-const RPC_URL = 'http://127.0.0.1:8545';
-const BALANCE_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-];
-
-async function getBalance(tokenAddress: string, wallet: string): Promise<{ grams: number; wei: string }> {
-  const provider = new JsonRpcProvider(RPC_URL);
-  const contract = new Contract(tokenAddress, BALANCE_ABI, provider);
-  const [balance, decimals]: [bigint, number] = await Promise.all([
-    contract.balanceOf(wallet),
-    contract.decimals(),
-  ]);
-  const grams = Number(balance) / 10 ** Number(decimals);
-  return { grams, wei: balance.toString() };
-}
 
 export default function InvestorPortal() {
   const [wallet,      setWallet]      = useState('');
@@ -61,13 +43,16 @@ export default function InvestorPortal() {
     setRedemptions([]);
     try {
       const [bal, rdms] = await Promise.all([
-        getBalance(selectedToken.address, addr),
+        api.getTokenBalance(selectedToken.address, addr),
         api.getRedemptions(selectedToken.address, addr),
       ]);
-      setBalance(bal);
+      setBalance({
+        grams: Number(bal.balanceWei) / 10 ** bal.decimals,
+        wei: bal.balanceWei,
+      });
       setRedemptions(rdms);
     } catch (e) {
-      setBalanceError((e as Error).message.includes('fetch') ? 'Could not connect to chain (is Hardhat running?)' : (e as Error).message);
+      setBalanceError((e as Error).message.includes('fetch') ? 'Could not reach the backend or blockchain network.' : (e as Error).message);
     } finally {
       setBalanceLoading(false);
     }

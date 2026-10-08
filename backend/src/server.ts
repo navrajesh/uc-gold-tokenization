@@ -22,6 +22,19 @@ app.use((req, _res, next) => {
   next();
 });
 
+const readiness = initializeApplication();
+
+// Vercel may invoke the exported app during a cold start. Hold requests until
+// the shared database connection and baseline data are ready.
+app.use(async (_req, _res, next) => {
+  try {
+    await readiness;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
@@ -49,7 +62,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-async function bootstrap() {
+async function initializeApplication() {
   await initializeDb();
 
   const existing = await getLatestGoldPrice();
@@ -62,7 +75,10 @@ async function bootstrap() {
     });
     console.log('Seeded initial gold price: $85.00/gram');
   }
+}
 
+async function bootstrap() {
+  await readiness;
   app.listen(config.port, () => {
     console.log(`Gold API running on http://localhost:${config.port}`);
     console.log(`  GET  /api/tokens`);

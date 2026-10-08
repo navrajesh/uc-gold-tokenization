@@ -77,6 +77,18 @@ export async function getTokenOnChainInfo(tokenAddress: string): Promise<{
   return { totalSupply: totalSupply.toString(), decimals: Number(decimals) };
 }
 
+export async function getTokenBalance(
+  tokenAddress: string,
+  walletAddress: string,
+): Promise<{ balance: string; decimals: number }> {
+  const token = new Contract(tokenAddress, GOLD_TOKEN_ABI, getProvider());
+  const [balance, decimals] = await Promise.all([
+    token.balanceOf(walletAddress) as Promise<bigint>,
+    token.decimals() as Promise<number>,
+  ]);
+  return { balance: balance.toString(), decimals: Number(decimals) };
+}
+
 // ─── Identity / KYC operations ────────────────────────────────────────────────
 
 export async function registerIdentityOnChain(

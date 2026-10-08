@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -6,14 +6,21 @@ async function main() {
   const signers = await ethers.getSigners();
   const deployer  = signers[0];
   const custodian = signers[1];
-  const investor1 = signers[2];
-  const investor2 = signers[3];
+  if (!deployer || !custodian) {
+    throw new Error("Deployment requires DEPLOYER_PRIVATE_KEY and CUSTODIAN_PRIVATE_KEY");
+  }
+
+  const investor1Address = process.env.DEMO_INVESTOR_1_ADDRESS ?? signers[2]?.address;
+  const investor2Address = process.env.DEMO_INVESTOR_2_ADDRESS ?? signers[3]?.address;
+  if (!investor1Address || !investor2Address) {
+    throw new Error("Set DEMO_INVESTOR_1_ADDRESS and DEMO_INVESTOR_2_ADDRESS");
+  }
 
   console.log("=== Gold Token Deployment ===");
   console.log("Deployer  :", deployer.address);
   console.log("Custodian :", custodian.address);
-  console.log("Investor1 :", investor1.address);
-  console.log("Investor2 :", investor2.address);
+  console.log("Investor1 :", investor1Address);
+  console.log("Investor2 :", investor2Address);
   console.log("");
 
   // ── 1. IdentityRegistry ────────────────────────────────────────────────────
@@ -87,20 +94,21 @@ async function main() {
   console.log("GoldToken proxy     :", await proxy.getAddress());
 
   // ── 6. KYC register demo investors ───────────────────────────────────────
-  await (await identityRegistry.registerIdentity(investor1.address, true)).wait();
-  await (await identityRegistry.registerIdentity(investor2.address, true)).wait();
+  await (await identityRegistry.registerIdentity(investor1Address, true)).wait();
+  await (await identityRegistry.registerIdentity(investor2Address, true)).wait();
   await (await identityRegistry.registerIdentity(deployer.address,  true)).wait();
   console.log("KYC registered: deployer, investor1, investor2");
 
   // ── 7. Register a demo gold bar (custodian) ───────────────────────────────
-  const reserveAsCustodian = goldReserve.connect(custodian);
-  await (await reserveAsCustodian.registerBar(
+  const reserveAsCustodian = goldReserve.connect(custodian) as any;
+  const barTx = await reserveAsCustodian.registerBar(
     "GB-2024-001",
     1000,           // 1,000 grams
     9999,           // 999.9 purity (bps)
     "Vault-SG-A",
-    "ASSAY-SG-001"
-  )).wait();
+    "ASSAY-SG-001",
+  );
+  const barReceipt = await barTx.wait();
   console.log("Bar registered: GB-2024-001 (1,000g, 999.9 purity)");
 
   // ── 8. Mint initial tokens to issuer ─────────────────────────────────────
@@ -108,15 +116,20 @@ async function main() {
   await (await (token as any).mint(deployer.address, MINT_AMOUNT)).wait();
   console.log("Minted 1,000 SGT999 to issuer:", deployer.address);
 
+  await (await (token as any).transfer(investor1Address, ethers.parseUnits("100", 18))).wait();
+  await (await (token as any).transfer(investor2Address, ethers.parseUnits("75", 18))).wait();
+  console.log("Distributed 100 SGT999 to investor1 and 75 SGT999 to investor2");
+
   // ── 9. Save deployment addresses ─────────────────────────────────────────
   const proxyAddress    = await proxy.getAddress();
   const reserveAddress  = await goldReserve.getAddress();
   const registryAddress = await identityRegistry.getAddress();
   const complianceAddr  = await compliance.getAddress();
 
+  const chain = await ethers.provider.getNetwork();
   const output = {
-    network: "localhost",
-    chainId: 31337,
+    network: network.name,
+    chainId: Number(chain.chainId),
     deployedAt: new Date().toISOString(),
     tokens: {
       SGT999: {
@@ -135,29 +148,34 @@ async function main() {
     accounts: {
       deployer:  deployer.address,
       custodian: custodian.address,
-      investor1: investor1.address,
-      investor2: investor2.address,
+      investor1: investor1Address,
+      investor2: investor2Address,
     },
   };
 
   const dir = path.join(__dirname, "../../deployments");
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "localhost.json"), JSON.stringify(output, null, 2));
+  fs.writeFileSync(path.join(dir, `${network.name}.json`), JSON.stringify(output, null, 2));
 
   console.log("\n=== Deployment complete ===");
   console.log("Proxy         :", proxyAddress);
   console.log("Total supply  :", ethers.formatUnits(await (token as any).totalSupply(), 18), "SGT999");
   console.log("Reserve grams :", (await goldReserve.getTotalActiveWeightGrams()).toString());
-  console.log("Saved to      : deployments/localhost.json");
+  console.log(`Saved to      : deployments/${network.name}.json`);
 
   // ── 10. Register with backend API ────────────────────────────────────────
-  const API = "http://localhost:3001";
+  const API = process.env.DEMO_API_URL ?? "http://localhost:3001";
+  const seedToken = process.env.DEMO_SEED_TOKEN ?? "";
+  const headers = {
+    "Content-Type": "application/json",
+    ...(seedToken ? { "x-demo-seed-token": seedToken } : {}),
+  };
   console.log("\n==> Registering with backend API...");
   try {
     // Token
     const tokenRes = await fetch(`${API}/api/tokens`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         address:                 proxyAddress,
         name:                    "Singapore Fine Gold",
@@ -181,16 +199,18 @@ async function main() {
     }
 
     // Gold bar
-    const barRes = await fetch(`${API}/api/reserves`, {
+    const barRes = await fetch(`${API}/api/reserves/import`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         tokenAddress: proxyAddress,
         barId:        "GB-2024-001",
         weightGrams:  1000,
         purityBps:    9999,
         vaultId:      "Vault-SG-A",
+        custodian:    custodian.address,
         assayRef:     "ASSAY-SG-001",
+        txHash:       barReceipt?.hash ?? barTx.hash,
       }),
     });
     if (barRes.status === 409 || barRes.status === 400) {
@@ -204,12 +224,12 @@ async function main() {
     // KYC identities
     for (const [label, addr] of [
       ["deployer",  deployer.address],
-      ["investor1", investor1.address],
-      ["investor2", investor2.address],
+      ["investor1", investor1Address],
+      ["investor2", investor2Address],
     ] as [string, string][]) {
       const idRes = await fetch(`${API}/api/identities`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ address: addr, tokenAddress: proxyAddress, countryCode: "SG" }),
       });
       if (idRes.status === 409) {

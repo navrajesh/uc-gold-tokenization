@@ -21,7 +21,7 @@ future-session handoff notes, see [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md).
 ┌──────────────────────────▼─────────────────────────────────────┐
 │  Backend  (Express + TypeScript + drizzle-orm)  localhost:3001  │
 │  Routes: /tokens  /reserves  /redemptions  /identities  /price  │
-│  Services: blockchain.ts (ethers v6)  ·  storage.ts (SQLite)    │
+│  Services: blockchain.ts (ethers v6) · storage.ts (SQLite/Turso)│
 └──────────────────────────┬─────────────────────────────────────┘
                            │ JSON-RPC
 ┌──────────────────────────▼─────────────────────────────────────┐
@@ -266,6 +266,26 @@ Once running, open **http://localhost:3000**.
 
 ---
 
+## Hosted Interview Demo
+
+The hosted path uses Vercel, Polygon Amoy (`80002`), an Alchemy RPC endpoint,
+and a persistent Turso/libSQL database. RPC credentials remain server-side;
+the Investor Portal reads balances through the backend API.
+
+After configuring the root `.env` and the matching Vercel environment
+variables, deploy and seed the Amoy contracts with:
+
+```bash
+npm run deploy:amoy
+npm run deploy:amoy:sgt916  # optional second token
+```
+
+See [`docs/HOSTED_DEMO.md`](docs/HOSTED_DEMO.md) for the complete environment,
+deployment, seeding, and verification checklist. Use only testnet wallets and
+synthetic demo data; the public Admin API is not production-secure.
+
+---
+
 ## Scripts Reference
 
 All scripts live in [`scripts/`](scripts/) and are executable bash scripts.
@@ -445,12 +465,12 @@ This confirms the on-chain reserve enforcement is working correctly.
 | Contract standard | ERC-3643 / T-REX (security token) |
 | Proxy pattern | ERC-1967 UUPS |
 | Backend | Node.js, Express 4, TypeScript 5 |
-| Database | SQLite via `@libsql/client` + drizzle-orm |
+| Database | SQLite locally; Turso/libSQL when `TURSO_DATABASE_URL` is set |
 | Blockchain client | ethers v6 |
 | Frontend | React 19, Vite 8, Tailwind CSS v4 |
 | UI components | Lucide React icons, custom component library |
 | Dark mode | Class-based (`document.documentElement.classList`) + localStorage |
-| Dev chain | Hardhat Network (chainId 31337) |
+| Networks | Hardhat (`31337`) locally; Polygon Amoy (`80002`) when hosted |
 
 ---
 
@@ -458,7 +478,7 @@ This confirms the on-chain reserve enforcement is working correctly.
 
 - **Reserve cap at mint time** — `GoldToken.mint` reverts if `totalSupply + amount > registeredGrams × 10^decimals`. The ratio can never exceed 1:1 by construction.
 - **Redemptions are off-chain first** — investors submit via the backend API; the on-chain burn only happens when a custodian calls `fulfillRedemption`. This separates the request lifecycle (DB) from settlement (chain).
-- **Direct chain reads in the frontend** — `InvestorPortal` reads `balanceOf` directly via `JsonRpcProvider` rather than through the backend, following the standard DApp pattern.
+- **Server-side hosted chain reads** — `InvestorPortal` asks the backend for `balanceOf`, keeping the Alchemy endpoint and API key out of the browser bundle.
 - **UUPS over Transparent proxy** — lower gas cost; upgrade authority is controlled by `DEFAULT_ADMIN_ROLE`.
 - **AND-logic compliance** — a transfer is only allowed if every compliance module approves it. Adding a new rule never weakens existing constraints.
 
@@ -485,7 +505,7 @@ This confirms the on-chain reserve enforcement is working correctly.
 | Burn events | `GoldToken` | `RedemptionFulfilled` event with burn tx hash |
 | Proxy → impl mapping | ERC-1967 slot | Implementation contract address |
 
-### Off-Chain (SQLite via Backend — convenience layer, not authoritative)
+### Off-Chain (SQLite/Turso via Backend — convenience layer, not authoritative)
 
 | Data | Table | Why off-chain |
 |---|---|---|

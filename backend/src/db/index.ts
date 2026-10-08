@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from './schema';
 import path from 'path';
 import fs from 'fs';
+import { config } from '../config';
 
 const DB_PATH = path.join(__dirname, '../../data/gold.db');
 
@@ -69,21 +70,40 @@ const BOOTSTRAP_SQL = [
 
 let _client: Client;
 let _db: ReturnType<typeof drizzle<typeof schema>>;
+let _initializing: Promise<ReturnType<typeof drizzle<typeof schema>>> | null = null;
 
 export async function initializeDb() {
-  const dataDir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  if (_db) return _db;
+  if (_initializing) return _initializing;
+
+  _initializing = (async () => {
+    const remoteUrl = config.tursoDatabaseUrl.trim();
+    if (!remoteUrl) {
+      const dataDir = path.dirname(DB_PATH);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+    }
+
+    _client = createClient({
+      url: remoteUrl || `file:${DB_PATH}`,
+      authToken: remoteUrl ? config.tursoAuthToken || undefined : undefined,
+    });
+
+    for (const sql of BOOTSTRAP_SQL) {
+      await _client.execute(sql);
+    }
+
+    _db = drizzle(_client, { schema });
+    return _db;
+  })();
+
+  try {
+    return await _initializing;
+  } catch (error) {
+    _initializing = null;
+    throw error;
   }
-
-  _client = createClient({ url: `file:${DB_PATH}` });
-
-  for (const sql of BOOTSTRAP_SQL) {
-    await _client.execute(sql);
-  }
-
-  _db = drizzle(_client, { schema });
-  return _db;
 }
 
 export function getDb() {

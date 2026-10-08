@@ -4,7 +4,7 @@ import {
   updateTokenReserveAddress,
 } from '../services/storage';
 import {
-  mintTokens, getTokenOnChainInfo, checkTransferCompliance,
+  mintTokens, getTokenOnChainInfo, getTokenBalance, checkTransferCompliance,
 } from '../services/blockchain';
 
 const router = Router();
@@ -33,6 +33,24 @@ router.get('/:address', async (req, res, next) => {
     }
 
     return res.json({ ...token, ...(onchain ?? {}) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/tokens/:address/balance/:wallet — live balance via server-side RPC
+router.get('/:address/balance/:wallet', async (req, res, next) => {
+  try {
+    const token = await getTokenByAddress(req.params.address);
+    if (!token) return res.status(404).json({ error: 'Token not found' });
+
+    const result = await getTokenBalance(token.address, req.params.wallet);
+    return res.json({
+      tokenAddress: token.address,
+      walletAddress: req.params.wallet,
+      balanceWei: result.balance,
+      decimals: result.decimals,
+    });
   } catch (err) {
     next(err);
   }

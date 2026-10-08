@@ -8,12 +8,15 @@
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy/01-deploy-gold-token.ts --network localhost",
     "deploy:sgt916": "hardhat run scripts/deploy/02-deploy-sgt916.ts --network localhost",
+    "deploy:amoy": "hardhat run scripts/deploy/01-deploy-gold-token.ts --network amoy",
+    "deploy:amoy:sgt916": "hardhat run scripts/deploy/02-deploy-sgt916.ts --network amoy",
     "clean": "hardhat clean",
     "typechain": "hardhat typechain"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@types/node": "^20.10.0",
+    "dotenv": "^16.4.7",
     "hardhat": "^2.19.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

@@ -23,6 +23,11 @@ export const api = {
   getToken: (address: string) =>
     request<Token>(`/api/tokens/${encodeURIComponent(address)}`),
 
+  getTokenBalance: (address: string, wallet: string) =>
+    request<{ tokenAddress: string; walletAddress: string; balanceWei: string; decimals: number }>(
+      `/api/tokens/${encodeURIComponent(address)}/balance/${encodeURIComponent(wallet)}`,
+    ),
+
   registerToken: (data: RegisterTokenPayload) =>
     request<Token>('/api/tokens', { method: 'POST', body: JSON.stringify(data) }),
 

@@ -11,4 +11,7 @@ export const config = {
   chainId:            parseInt(process.env.CHAIN_ID ?? '31337', 10),
   deployerPrivateKey: process.env.DEPLOYER_PRIVATE_KEY ?? '',
   custodianPrivateKey: process.env.CUSTODIAN_PRIVATE_KEY ?? '',
+  tursoDatabaseUrl:   process.env.TURSO_DATABASE_URL ?? '',
+  tursoAuthToken:     process.env.TURSO_AUTH_TOKEN ?? '',
+  demoSeedToken:      process.env.DEMO_SEED_TOKEN ?? '',
 } as const;

@@ -7,8 +7,14 @@ import {
 import {
   registerBarOnChain, deactivateBarOnChain, getTotalActiveWeightGrams,
 } from '../services/blockchain';
+import { config } from '../config';
 
 const router = Router();
+
+function hasSeedAccess(token: string | undefined): boolean {
+  if (!config.demoSeedToken) return config.nodeEnv !== 'production';
+  return token === config.demoSeedToken;
+}
 
 // GET /api/reserves?tokenAddress= — list all bars (optionally filtered by token)
 // Includes live reserve summary from chain when tokenAddress is provided
@@ -93,6 +99,53 @@ router.post('/', async (req, res, next) => {
       active:       true,
       registeredAt: new Date().toISOString(),
       txHash,
+    });
+
+    return res.status(201).json(bar);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/reserves/import — imports a bar already registered on-chain.
+// Used by trusted deployment tooling so the same bar is not submitted twice.
+router.post('/import', async (req, res, next) => {
+  try {
+    const seedToken = req.header('x-demo-seed-token');
+    if (!hasSeedAccess(seedToken)) {
+      return res.status(401).json({ error: 'Invalid demo seed token' });
+    }
+
+    const { barId, tokenAddress, weightGrams, purityBps, vaultId, custodian, assayRef, txHash } =
+      req.body as {
+        barId: string; tokenAddress: string; weightGrams: number;
+        purityBps: number; vaultId: string; custodian: string;
+        assayRef?: string; txHash?: string;
+      };
+
+    if (!barId || !tokenAddress || !weightGrams || !purityBps || !vaultId || !custodian) {
+      return res.status(400).json({
+        error: 'Required: barId, tokenAddress, weightGrams, purityBps, vaultId, custodian',
+      });
+    }
+
+    const token = await getTokenByAddress(tokenAddress);
+    if (!token) return res.status(404).json({ error: 'Token not found' });
+
+    const existing = await getGoldBar(barId);
+    if (existing) return res.status(409).json({ error: 'Bar already imported', bar: existing });
+
+    const bar = await insertGoldBar({
+      barId,
+      tokenAddress,
+      weightGrams,
+      purityBps,
+      vaultId,
+      custodian,
+      assayRef: assayRef ?? null,
+      active: true,
+      registeredAt: new Date().toISOString(),
+      txHash: txHash ?? null,
     });
 
     return res.status(201).json(bar);
