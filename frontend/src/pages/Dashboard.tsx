@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Vault, Coins, Scale, DollarSign, Package, ExternalLink } from 'lucide-react';
+import { RefreshCw, Vault, Coins, Scale, DollarSign, Package, ExternalLink, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatGrams, formatUsd, formatWeiToGrams, formatPurityBps, formatDate, reserveRatio } from '../lib/utils';
 import type { Token, GoldBar, GoldPrice } from '../lib/types';
@@ -19,7 +19,7 @@ function ChainRecord({ label, value, kind = 'address' }: {
   kind?: 'address' | 'tx';
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-stone-100 bg-stone-50/70 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/30">
+    <div className="min-w-0 rounded-xl border border-stone-200/70 bg-stone-50/60 px-3.5 py-3 dark:border-white/[0.06] dark:bg-white/[0.025]">
       <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{label}</p>
       <ExplorerLink value={value} kind={kind} chars={8} className="max-w-full text-xs" />
     </div>
@@ -80,21 +80,25 @@ export default function Dashboard() {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Reserve Dashboard</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Real-time proof-of-reserve · every token is backed by physical gold
+      <div className="page-hero px-5 py-6 sm:px-8 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div className="relative z-10">
+          <p className="page-eyebrow mb-3">Institutional proof of reserve</p>
+          <h1 className="display-title text-3xl sm:text-4xl font-semibold text-zinc-950 dark:text-zinc-50">Gold, accounted for.</h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 max-w-xl leading-6">
+            Live visibility into vaulted assets, circulating supply, and independently verifiable on-chain records.
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+            <ShieldCheck size={14} /> Reserve controls active on Polygon Amoy
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="relative z-10 flex items-center gap-3">
           {tokens.length > 1 && (
             <select
               value={selected?.address ?? ''}
               onChange={e => setSelected(tokens.find(t => t.address === e.target.value) ?? null)}
-              className="text-sm rounded-lg border border-stone-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="premium-input text-sm rounded-xl border text-zinc-900 dark:text-zinc-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
             >
               {tokens.map(t => (
                 <option key={t.address} value={t.address}>{t.symbol} — {t.name}</option>

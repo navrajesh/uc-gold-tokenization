@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Sun, Moon, LayoutDashboard, ShieldCheck, User, CircleHelp } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, ShieldCheck, User, CircleHelp, Gem } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 
 const NAV = [
@@ -13,21 +13,21 @@ export default function Header() {
   const { dark, toggle } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+    <header className="premium-header sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-3">
         {/* Brand */}
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-sm select-none">G</span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="brand-mark" aria-hidden="true">
+            <Gem size={17} strokeWidth={1.6} />
           </div>
-          <span className="font-semibold text-sm hidden sm:block">
-            <span className="gold-shimmer">Gold Token</span>
-            <span className="text-zinc-500 dark:text-zinc-400 font-normal"> Platform</span>
-          </span>
+          <div className="hidden sm:block leading-none">
+            <span className="brand-wordmark block">Gold Tokenizer</span>
+            <span className="mt-1.5 block text-[9px] font-semibold uppercase tracking-[0.24em] text-zinc-400 dark:text-zinc-500">Institutional Tokenization Platform</span>
+          </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex items-center gap-1">
+        <nav className="nav-capsule flex items-center gap-1 p-1">
           {NAV.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
@@ -35,10 +35,10 @@ export default function Header() {
               end={to === '/'}
               aria-label={label}
               className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                `flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-full text-[13px] font-medium transition-all duration-200
                 ${isActive
-                  ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800'
+                  ? 'nav-active text-zinc-950 dark:text-amber-200'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`
               }
             >
@@ -48,17 +48,19 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggle}
-          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-        >
-          {dark
-            ? <Sun size={16} />
-            : <Moon size={16} />
-          }
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+            <span className="live-dot" /> Amoy live
+          </div>
+          <button
+            onClick={toggle}
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="theme-toggle w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 dark:text-zinc-400 transition-all"
+          >
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
       </div>
     </header>
   );

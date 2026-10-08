@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { Search, Coins, ArrowDownToLine, Clock } from 'lucide-react';
+import { Search, Coins, ArrowDownToLine, Clock, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatGrams, formatUsd, formatDate } from '../lib/utils';
 import type { Token, Redemption, GoldPrice } from '../lib/types';
@@ -82,13 +82,19 @@ export default function InvestorPortal() {
   const usdValue  = balance ? balance.grams * priceNum : 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Investor Portal</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-          View holdings, request redemptions, track your gold
-        </p>
+      <div className="page-hero px-5 py-6 sm:px-8 sm:py-8">
+        <div className="relative z-10">
+          <p className="page-eyebrow mb-3">Private holdings</p>
+          <h1 className="display-title text-3xl sm:text-4xl font-semibold text-zinc-950 dark:text-zinc-50">Your gold, in full view.</h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 max-w-xl leading-6">
+            Review verified holdings, understand their current value, and begin a physical redemption.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+            <Sparkles size={13} /> One token represents one gram of vaulted gold
+          </div>
+        </div>
       </div>
 
       {/* Wallet lookup */}
@@ -110,14 +116,14 @@ export default function InvestorPortal() {
                 <select
                   value={selectedToken?.address ?? ''}
                   onChange={e => setSelectedToken(tokens.find(t => t.address === e.target.value) ?? null)}
-                  className="w-full text-sm rounded-lg border border-stone-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="premium-input w-full text-sm rounded-xl border text-zinc-900 dark:text-zinc-100 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                 >
                   {tokens.map(t => <option key={t.address} value={t.address}>{t.symbol}</option>)}
                 </select>
               </div>
             )}
             <div className="flex items-end">
-              <Button onClick={lookup} loading={balanceLoading} className="h-9">
+              <Button onClick={lookup} loading={balanceLoading} className="h-10">
                 <Search size={14} /> Look up
               </Button>
             </div>

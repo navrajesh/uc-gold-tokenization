@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FormEvent } from 'react';
 import {
   Coins, Package, Users, ArrowLeftRight, Hammer, TrendingUp,
-  Plus, CheckCircle, XCircle, Truck, ChevronDown, ChevronUp,
+  Plus, CheckCircle, XCircle, Truck, ChevronDown, ChevronUp, LockKeyhole,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { shortAddress, formatGrams, formatDate, formatPurityBps, formatUsd } from '../lib/utils';
@@ -552,22 +552,28 @@ export default function AdminPanel() {
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Admin Panel</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Manage tokens, reserves, KYC, and redemptions</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="page-hero mb-7 px-5 py-6 sm:px-8 sm:py-7 flex items-center justify-between gap-5">
+        <div className="relative z-10">
+          <p className="page-eyebrow mb-3">Operations console</p>
+          <h1 className="display-title text-3xl sm:text-4xl font-semibold text-zinc-950 dark:text-zinc-50">Control with clarity.</h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2">Manage issuance, reserves, investor eligibility, and physical settlement.</p>
+        </div>
+        <div className="relative z-10 hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-amber-100/60 text-amber-800 dark:border-amber-300/10 dark:bg-amber-300/[0.07] dark:text-amber-300">
+          <LockKeyhole size={21} />
+        </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 overflow-x-auto pb-1 mb-6 border-b border-stone-200 dark:border-zinc-800">
+      <div className="premium-card flex gap-1 overflow-x-auto p-1.5 mb-6 rounded-2xl">
         {TABS.map(({ id, label, Icon, help }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors -mb-px border-b-2
+            className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium rounded-xl whitespace-nowrap transition-all
               ${tab === id
-                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
-                : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                ? 'bg-gradient-to-br from-amber-100 to-amber-200/70 text-amber-950 shadow-sm dark:from-amber-400/15 dark:to-amber-500/10 dark:text-amber-200'
+                : 'text-zinc-500 hover:text-zinc-900 hover:bg-black/[0.03] dark:hover:text-zinc-100 dark:hover:bg-white/[0.04]'}`}
           >
             <Icon size={14} />
             {label}

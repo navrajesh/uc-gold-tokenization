@@ -10,9 +10,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+        <div className="app-shell min-h-screen text-zinc-900 dark:text-zinc-100">
           <Header />
-          <main>
+          <main className="relative z-10">
             <Routes>
               <Route path="/"         element={<Dashboard />} />
               <Route path="/about"    element={<AboutDemo />} />

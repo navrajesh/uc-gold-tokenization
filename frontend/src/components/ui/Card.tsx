@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm ${className}`}>
+    <div className={`premium-card rounded-2xl ${className}`}>
       {children}
     </div>
   );
@@ -10,16 +10,16 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
 
 export function CardHeader({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`px-5 py-4 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between ${className}`}>
+    <div className={`px-5 sm:px-6 py-4 border-b border-stone-100/80 dark:border-white/[0.06] flex items-center justify-between ${className}`}>
       {children}
     </div>
   );
 }
 
 export function CardTitle({ children }: { children: ReactNode }) {
-  return <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{children}</h3>;
+  return <h3 className="text-sm font-semibold tracking-[-0.01em] text-zinc-900 dark:text-zinc-100">{children}</h3>;
 }
 
 export function CardBody({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`px-5 py-4 ${className}`}>{children}</div>;
+  return <div className={`px-5 sm:px-6 py-5 ${className}`}>{children}</div>;
 }

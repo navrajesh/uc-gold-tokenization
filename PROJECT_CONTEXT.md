@@ -4,7 +4,7 @@ This document is the durable handoff for future development sessions. It records
 the project intent, current architecture, operational assumptions, recent fixes,
 verification history, and known gaps. Update it whenever those facts change.
 
-Last reviewed: **2026-10-07**
+Last reviewed: **2026-10-08**
 
 ## Repository snapshot
 
@@ -342,6 +342,25 @@ in `Tooltip.tsx`, `useTheme.tsx`, and effect patterns in `AdminPanel.tsx` and
 `Dashboard.tsx`. A root `npx tsc --noEmit` also reports existing Hardhat test
 contract-cast diagnostics. These did not affect either production build and
 were not introduced or changed by the explorer feature.
+
+### 2026-10-08 premium UI refresh
+
+The frontend received a visual-only premium redesign without changing API or
+contract behavior. The shared design system now uses warm ivory/charcoal page
+surfaces, restrained metallic-gold accents, glass-like cards, stronger display
+typography, richer form controls, refined status badges, and responsive page
+hero treatments. The Reserve, Admin, Investor, and How It Works pages all use
+the updated system, while the existing light/dark theme behavior remains. The
+How It Works page now targets a technical audience with concrete contract
+methods, architecture layers, contract responsibilities, read/write paths,
+redemption state boundaries, and the chain/database atomicity caveat.
+
+The frontend production build passed with Node 24. The existing non-blocking
+main-chunk size warning remains. Repository-wide frontend lint still reports
+only the previously documented issues in `Tooltip.tsx`, `useTheme.tsx`,
+`AdminPanel.tsx`, and `Dashboard.tsx`; the redesign introduced no new findings.
+The UI refresh is tracked in source control but has not yet been deployed to
+the production Vercel alias.
 
 ### 2026-10-07 Vercel Services runtime packaging failure
 
