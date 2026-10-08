@@ -11,8 +11,11 @@ Last reviewed: **2026-10-07**
 - Repository: `https://github.com/navrajesh/uc-gold-tokenization.git`
 - Primary branch: `main`
 - Project stage: proof of concept (POC), not production-ready
-- Latest pushed UI commit at the time of this note: `2754972`
-  (`Rename and reorder info navigation`)
+- Latest pushed commits at the time of this note:
+  - `606fc13` (`Record Polygon Amoy deployment`)
+  - `2bbdffd` (`Fix Vercel backend packaging`)
+  - `09d4f0d` (`Add Amoy and Turso hosted demo support`)
+  - `2754972` (`Rename and reorder info navigation`)
 - Intended local commit identity for this clone:
   `Rajesh Nkrishnan <navrajesh@gmail.com>`
 - The email override is stored in `.git/config`; it is local machine state and
@@ -249,14 +252,13 @@ The fix was locally verified with:
 The original failure was a TypeScript source issue, not a Vercel Hobby-plan
 limit.
 
-Commit `c742e5d` was pushed to `origin/main`. The post-push Vercel deployment
-result was not independently checked from this workspace, so future sessions
-should confirm the deployment state in Vercel rather than assuming runtime
-success from the local build alone.
+Commit `c742e5d` was pushed to `origin/main`. A later production deployment was
+independently checked from this workspace; its current verified status is
+recorded below.
 
-### Hosted runtime status and remaining setup
+### Hosted runtime status
 
-The code now supports the selected hosted stack:
+The selected hosted stack is deployed and verified:
 
 - Polygon Amoy is configured in Hardhat.
 - Alchemy-backed live balance reads go through the backend rather than exposing
@@ -264,18 +266,30 @@ The code now supports the selected hosted stack:
 - Turso provides persistent libSQL storage when its two variables are set.
 - Amoy deployment scripts seed contract state, demo investor balances, and the
   hosted database.
+- Production alias: `https://uc-gold-tokenization-ten.vercel.app`.
+- Vercel project: `uc-gold-tokenization`, personal scope `navrajesh`.
+- The production `/health` and application API routes return HTTP 200.
+- Turso contains one registered token, one reserve bar, and three identities.
+- The live reserve summary reports 1,000 active grams from the chain.
+- The two demo investor balances are 100 and 75 `SGT999` respectively.
+- The deployed contract map is committed in `deployments/amoy.json`; contract
+  and account addresses there are public testnet data, not credentials.
+- `SGT999` proxy: `0x3d5da18354C3c7856B20090790a94aD6E112e960`.
 
-The account credentials and final deployment still have to be configured by
-the repository owner. Follow `docs/HOSTED_DEMO.md`, set `FRONTEND_URL` to the
-real origin, fund both testnet signers with Amoy POL, deploy the contracts, and
-verify each hosted flow. The exported Express app follows Vercel's supported
-pattern, and cold-start requests wait for database initialization.
+The initial contract deployment completed on-chain, but its backend registration
+requests failed while the Vercel function packaging issue below was present.
+After deploying the packaging fix, `npm run register:amoy` successfully imported
+the existing token, reserve bar, deployer identity, and two investor identities
+without redeploying contracts or repeating chain writes. Do not rerun
+`npm run deploy:amoy` for this stack. Use `register:amoy` only to recover the
+off-chain records for the addresses already stored in `deployments/amoy.json`.
 
-The Amoy/Turso implementation was locally verified on 2026-10-07 with contract
-compilation, all 11 Hardhat tests, the backend TypeScript build, the frontend
-TypeScript/Vite production build, `git diff --check`, and a scan for accidentally
-added non-placeholder credentials. Live Alchemy, Turso, and Vercel integration
-cannot be verified until the private environment variables are configured.
+The Amoy/Turso/Vercel implementation was verified on 2026-10-07 with the live
+health and API endpoints, live investor balances, a direct Turso connectivity
+check, all 11 Hardhat tests, the backend TypeScript build, the frontend
+TypeScript/Vite production build, deployment-script typechecking, and
+`git diff --check`. One first test run encountered a one-second timestamp-boundary
+flake in the redemption event assertion; the immediate full rerun passed all 11.
 
 ### 2026-10-07 Vercel Services runtime packaging failure
 
@@ -287,6 +301,36 @@ Vercel Services nested-backend output-directory issue. `vercel.json` now sets
 the backend `entrypoint` to `src/server.ts` and `outputDirectory` to `.`, forcing
 Vercel to package the source entrypoint with its service dependencies. `/health`
 is also routed to the backend for deployment verification.
+
+Commit `2bbdffd` contains the packaging fix and the database-only registration
+recovery flow. The resulting production function was built with its dependencies
+and verified successfully.
+
+### Vercel CLI account profiles
+
+Two CLI profiles are intentionally kept separate so work and personal projects
+can be switched without logging either account out:
+
+- Default Vercel configuration: authenticated as `navrajesh-aura-admin`, with
+  active team `team-aura-invites` (`Team AURA Invites`).
+- Personal configuration at `/Users/rajesh/.vercel-personal`: authenticated as
+  `navrajesh-7640`, with active team/scope `navrajesh`.
+
+Useful identity checks:
+
+```bash
+# Default/team profile
+npx vercel whoami
+npx vercel teams ls
+
+# Personal profile
+npx vercel whoami --global-config /Users/rajesh/.vercel-personal
+npx vercel teams ls --global-config /Users/rajesh/.vercel-personal
+```
+
+Use the personal `--global-config` option for commands targeting this project's
+Vercel deployment. Login tokens and configuration contents remain machine-local
+and must not be committed.
 
 ## Security and production-readiness gaps
 
