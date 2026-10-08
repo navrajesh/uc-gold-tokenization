@@ -10,6 +10,7 @@
     "deploy:sgt916": "hardhat run scripts/deploy/02-deploy-sgt916.ts --network localhost",
     "deploy:amoy": "hardhat run scripts/deploy/01-deploy-gold-token.ts --network amoy",
     "deploy:amoy:sgt916": "hardhat run scripts/deploy/02-deploy-sgt916.ts --network amoy",
+    "register:amoy": "ts-node scripts/deploy/03-register-amoy.ts",
     "clean": "hardhat clean",
     "typechain": "hardhat typechain"
   },

@@ -91,6 +91,16 @@ The scripts are intentionally not idempotent on-chain. If a run fails after
 deploying contracts, inspect the transaction history and output before running
 it again; a retry creates a new contract stack.
 
+If contract deployment succeeds but hosted API registration fails, preserve
+`deployments/amoy.json`, fix the backend, and run this instead of redeploying:
+
+```bash
+npm run register:amoy
+```
+
+This command performs only the Turso/backend bookkeeping for the existing
+contracts; it does not deploy, mint, transfer, or register identities on-chain.
+
 ## 5. Verify the hosted story
 
 1. Open `/api/tokens` and confirm `SGT999` is returned.

@@ -134,10 +134,12 @@ async function main() {
     tokens: {
       SGT999: {
         proxy:            proxyAddress,
+        deploymentTxHash: proxy.deploymentTransaction()?.hash ?? null,
         implementation:   await impl.getAddress(),
         identityRegistry: registryAddress,
         compliance:       complianceAddr,
         goldReserve:      reserveAddress,
+        barRegistrationTxHash: barReceipt?.hash ?? barTx.hash,
         complianceModules: {
           countryRestrictions: await countryModule.getAddress(),
           maxWalletBalance:    await maxWalletModule.getAddress(),

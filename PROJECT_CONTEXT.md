@@ -277,6 +277,17 @@ TypeScript/Vite production build, `git diff --check`, and a scan for accidentall
 added non-placeholder credentials. Live Alchemy, Turso, and Vercel integration
 cannot be verified until the private environment variables are configured.
 
+### 2026-10-07 Vercel Services runtime packaging failure
+
+Commit `09d4f0d` built successfully, but every backend invocation failed with
+`Cannot find module 'express'` from `/var/task/server.js`. Vercel had run the
+backend `tsc` build and flattened `backend/dist/server.js` into the function
+root without placing the service dependencies beside it. This matches the open
+Vercel Services nested-backend output-directory issue. `vercel.json` now sets
+the backend `entrypoint` to `src/server.ts` and `outputDirectory` to `.`, forcing
+Vercel to package the source entrypoint with its service dependencies. `/health`
+is also routed to the backend for deployment verification.
+
 ## Security and production-readiness gaps
 
 This is intentionally a POC. Important gaps visible in the current code:

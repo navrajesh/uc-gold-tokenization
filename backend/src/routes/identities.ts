@@ -3,8 +3,14 @@ import {
   upsertIdentity, getIdentityByAddress, getAllIdentities, getTokenByAddress,
 } from '../services/storage';
 import { registerIdentityOnChain, isVerifiedOnChain } from '../services/blockchain';
+import { config } from '../config';
 
 const router = Router();
+
+function hasSeedAccess(token: string | undefined): boolean {
+  if (!config.demoSeedToken) return config.nodeEnv !== 'production';
+  return token === config.demoSeedToken;
+}
 
 // GET /api/identities — list all KYC records
 router.get('/', async (_req, res, next) => {
@@ -73,6 +79,39 @@ router.post('/', async (req, res, next) => {
     const identity = await upsertIdentity({
       address,
       isVerified,
+      countryCode: countryCode ?? null,
+      registeredAt: new Date().toISOString(),
+    });
+
+    return res.status(201).json(identity);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/identities/import — imports an identity already registered on-chain.
+// Used by trusted deployment recovery tooling without sending a duplicate tx.
+router.post('/import', async (req, res, next) => {
+  try {
+    if (!hasSeedAccess(req.header('x-demo-seed-token'))) {
+      return res.status(401).json({ error: 'Invalid demo seed token' });
+    }
+
+    const { address, countryCode, verified, tokenAddress } = req.body as {
+      address: string; countryCode?: string;
+      verified?: boolean; tokenAddress: string;
+    };
+
+    if (!address || !tokenAddress) {
+      return res.status(400).json({ error: 'Required: address, tokenAddress' });
+    }
+
+    const token = await getTokenByAddress(tokenAddress);
+    if (!token) return res.status(404).json({ error: 'Token not found' });
+
+    const identity = await upsertIdentity({
+      address,
+      isVerified: verified ?? true,
       countryCode: countryCode ?? null,
       registeredAt: new Date().toISOString(),
     });
