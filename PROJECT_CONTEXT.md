@@ -231,9 +231,9 @@ contracts and ensure database records/deployment addresses are not stale.
 Routing:
 
 - `/api/(.*)` goes to the backend service.
-- `/about`, `/admin`, and `/investor` select the frontend service root so direct
-  visits and browser refreshes return the Vite SPA entry point while preserving
-  the requested browser URL for React Router.
+- `/about`, `/admin`, and `/investor` are emitted as physical Vite HTML entry
+  points so direct visits and browser refreshes resolve before React Router
+  takes over in the browser.
 - All other paths go to the frontend service.
 
 ### 2026-10-22 direct-route SPA fix
@@ -241,12 +241,14 @@ Routing:
 Direct visits or refreshes on React routes such as `/about` returned Vercel's
 `404 NOT_FOUND`, even though in-app navigation worked. The root service rewrite
 delegated the original `/about` path to the Vite service, which has no physical
-file at that path. A service destination `path` selects the internal route but
-does not replace the path exposed to the target runtime, so `vercel.json` also
-uses a `request.path` transform to serve `/` internally for each known client
-route. The browser URL remains unchanged for React Router. Static asset paths
-keep using the existing catch-all, and `/health` plus `/api/*` remain routed to
-the backend.
+file at that path. Service-targeted rewrite paths and request transforms were
+accepted by Vercel's deployment configuration but still returned the platform
+404 from the production static service. The frontend therefore uses Vite's
+multi-page build input to emit `about/index.html`, `admin/index.html`, and
+`investor/index.html`. Each file boots the same React application, so
+BrowserRouter renders the matching page while Vercel resolves a real static
+artifact. Static assets keep using the existing catch-all, and `/health` plus
+`/api/*` remain routed to the backend.
 
 ### 2026-10-07 build failure and fix
 

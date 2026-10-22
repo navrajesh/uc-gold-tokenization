@@ -26,48 +26,6 @@
       }
     },
     {
-      "source": "/about",
-      "destination": {
-        "service": "frontend",
-        "path": "/"
-      },
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/"
-        }
-      ]
-    },
-    {
-      "source": "/admin",
-      "destination": {
-        "service": "frontend",
-        "path": "/"
-      },
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/"
-        }
-      ]
-    },
-    {
-      "source": "/investor",
-      "destination": {
-        "service": "frontend",
-        "path": "/"
-      },
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/"
-        }
-      ]
-    },
-    {
       "source": "/(.*)",
       "destination": {
         "service": "frontend"
