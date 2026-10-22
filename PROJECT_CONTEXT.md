@@ -241,9 +241,12 @@ Routing:
 Direct visits or refreshes on React routes such as `/about` returned Vercel's
 `404 NOT_FOUND`, even though in-app navigation worked. The root service rewrite
 delegated the original `/about` path to the Vite service, which has no physical
-file at that path. `vercel.json` now routes each known client-side route to path
-`/` inside the frontend service. Static asset paths keep using the existing
-catch-all, and `/health` plus `/api/*` remain routed to the backend.
+file at that path. A service destination `path` selects the internal route but
+does not replace the path exposed to the target runtime, so `vercel.json` also
+uses a `request.path` transform to serve `/` internally for each known client
+route. The browser URL remains unchanged for React Router. Static asset paths
+keep using the existing catch-all, and `/health` plus `/api/*` remain routed to
+the backend.
 
 ### 2026-10-07 build failure and fix
 
