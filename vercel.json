@@ -26,6 +26,27 @@
       }
     },
     {
+      "source": "/about",
+      "destination": {
+        "service": "frontend",
+        "path": "/"
+      }
+    },
+    {
+      "source": "/admin",
+      "destination": {
+        "service": "frontend",
+        "path": "/"
+      }
+    },
+    {
+      "source": "/investor",
+      "destination": {
+        "service": "frontend",
+        "path": "/"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "service": "frontend"

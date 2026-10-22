@@ -4,7 +4,7 @@ This document is the durable handoff for future development sessions. It records
 the project intent, current architecture, operational assumptions, recent fixes,
 verification history, and known gaps. Update it whenever those facts change.
 
-Last reviewed: **2026-10-08**
+Last reviewed: **2026-10-22**
 
 ## Repository snapshot
 
@@ -12,6 +12,9 @@ Last reviewed: **2026-10-08**
 - Primary branch: `main`
 - Project stage: proof of concept (POC), not production-ready
 - Latest pushed commits at the time of this note:
+  - `43c568e` (`Default new sessions to dark mode`)
+  - `08cdfca` (`Fix loading spinner dimensions`)
+  - `b9d1aa8` (`Refresh frontend with premium technical UI`)
   - `a173932` (`Link demo records to Amoy explorer`)
   - `d9e0f89` (`Update hosted demo project context`)
   - `606fc13` (`Record Polygon Amoy deployment`)
@@ -228,7 +231,19 @@ contracts and ensure database records/deployment addresses are not stale.
 Routing:
 
 - `/api/(.*)` goes to the backend service.
+- `/about`, `/admin`, and `/investor` select the frontend service root so direct
+  visits and browser refreshes return the Vite SPA entry point while preserving
+  the requested browser URL for React Router.
 - All other paths go to the frontend service.
+
+### 2026-10-22 direct-route SPA fix
+
+Direct visits or refreshes on React routes such as `/about` returned Vercel's
+`404 NOT_FOUND`, even though in-app navigation worked. The root service rewrite
+delegated the original `/about` path to the Vite service, which has no physical
+file at that path. `vercel.json` now routes each known client-side route to path
+`/` inside the frontend service. Static asset paths keep using the existing
+catch-all, and `/health` plus `/api/*` remain routed to the backend.
 
 ### 2026-10-07 build failure and fix
 
